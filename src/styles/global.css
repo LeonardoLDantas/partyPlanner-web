@@ -87,6 +87,13 @@ body {
   transition: background 0.25s ease, color 0.25s ease;
 }
 
+.mantine-AppShell-header,
+.mantine-AppShell-navbar,
+.mantine-AppShell-main {
+  background: transparent;
+  border: 0;
+}
+
 button,
 input {
   font: inherit;
@@ -317,6 +324,11 @@ input {
   grid-template-columns: 280px 1fr;
   gap: 1.5rem;
   padding: 1.25rem;
+  position: relative;
+}
+
+.dashboard-shell.is-collapsed {
+  grid-template-columns: 92px 1fr;
 }
 
 .dashboard-sidebar {
@@ -328,6 +340,11 @@ input {
   background: var(--sidebar-bg);
   color: var(--sidebar-text);
   min-height: calc(100vh - 2.5rem);
+  transition: width 0.22s ease, padding 0.22s ease;
+}
+
+.dashboard-sidebar.is-collapsed {
+  padding-inline: 1rem;
 }
 
 .brand-block {
@@ -335,6 +352,18 @@ input {
   align-items: center;
   gap: 0.9rem;
   margin-bottom: 2rem;
+}
+
+.sidebar-copy,
+.sidebar-link-label {
+  transition: opacity 0.18s ease, width 0.18s ease;
+}
+
+.sidebar-copy.is-hidden,
+.sidebar-link-label.is-hidden {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
 }
 
 .brand-mark {
@@ -355,7 +384,8 @@ input {
 .notification-card span,
 .list-card p,
 .toggle-row p,
-.theme-switcher p {
+.theme-switcher p,
+.theme-hint p {
   margin: 0;
   color: var(--text-muted);
 }
@@ -379,6 +409,11 @@ input {
   background: var(--accent);
 }
 
+.dashboard-sidebar.is-collapsed .sidebar-link {
+  justify-content: center;
+  padding-inline: 0.75rem;
+}
+
 .logout-button {
   width: 100%;
   background: rgba(243, 216, 166, 0.16);
@@ -390,6 +425,138 @@ input {
   display: grid;
   gap: 1.25rem;
   align-content: start;
+}
+
+.app-header {
+  width: 100%;
+}
+
+.app-header-row {
+  padding: 1rem 1.25rem;
+  border-radius: 24px;
+  background: var(--card-soft);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+  align-items: flex-start;
+}
+
+.app-header-title {
+  margin: 0.3rem 0;
+  font-size: 2.2rem;
+  color: var(--text);
+}
+
+.app-header-copy {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.app-navbar {
+  padding: 1.25rem 0 1.25rem 1.25rem;
+  background: var(--sidebar-bg);
+  color: var(--sidebar-text);
+  box-shadow: var(--shadow);
+}
+
+.app-navbar.is-collapsed {
+  padding-left: 0.75rem;
+}
+
+.navbar-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.navbar-toggle-button {
+  flex-shrink: 0;
+  background: var(--accent) !important;
+  color: #fff7ed !important;
+  box-shadow: var(--shadow);
+}
+
+.app-navbar.is-collapsed .navbar-toggle-row {
+  justify-content: center;
+}
+
+.app-navbar.is-collapsed .navbar-toggle-button {
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
+  min-height: 56px;
+  margin-inline: auto;
+}
+
+.app-navbar-grow {
+  flex: 1;
+  padding-top: 1rem;
+}
+
+.mantine-nav-link {
+  border-radius: 18px;
+  color: var(--sidebar-text);
+}
+
+.mantine-nav-link .mantine-NavLink-root {
+  border-radius: 18px;
+  color: var(--sidebar-text);
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.mantine-nav-link .mantine-NavLink-root:hover {
+  background: #d96733;
+  color: #1b1f27;
+}
+
+.mantine-nav-link .mantine-NavLink-section {
+  color: inherit;
+}
+
+.app-navbar.is-collapsed .mantine-nav-link .mantine-NavLink-root {
+  width: 56px;
+  height: 56px;
+  min-height: 56px;
+  padding: 0;
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-navbar.is-collapsed .mantine-nav-link .mantine-NavLink-body {
+  display: none;
+}
+
+.app-navbar.is-collapsed .mantine-nav-link .mantine-NavLink-section {
+  margin: 0 !important;
+  min-width: 0;
+  width: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mantine-nav-link[data-active='true'],
+.mantine-nav-link .mantine-NavLink-root[data-active='true'] {
+  background: var(--accent);
+  color: #fff7ed;
+}
+
+.mantine-nav-link .mantine-NavLink-root[data-active='true']:hover {
+  background: var(--accent);
+  color: #fff7ed;
+}
+
+.app-action {
+  background: var(--card) !important;
+  color: var(--text) !important;
+  border: 0 !important;
+  box-shadow: var(--shadow);
+}
+
+.notification-trigger {
+  position: relative;
 }
 
 .topbar,
@@ -417,6 +584,7 @@ input {
   display: flex;
   align-items: center;
   gap: 1rem;
+  margin-left: auto;
 }
 
 .install-callout {
@@ -463,8 +631,11 @@ input {
   top: 5.2rem;
   right: 0;
   z-index: 5;
-  width: min(360px, calc(100vw - 2rem));
+  width: min(360px, calc(100% - 0.5rem));
+  max-width: calc(100% - 0.5rem);
+  max-height: min(70vh, 560px);
   padding: 1.1rem;
+  overflow: hidden;
 }
 
 .inline-heading {
@@ -478,6 +649,12 @@ input {
 .list-stack {
   display: grid;
   gap: 0.8rem;
+}
+
+.notification-list {
+  max-height: calc(min(70vh, 560px) - 4.5rem);
+  overflow: auto;
+  padding-right: 0.2rem;
 }
 
 .notification-card,
@@ -706,6 +883,11 @@ input {
   gap: 0.9rem;
 }
 
+.theme-hint {
+  display: grid;
+  gap: 0.45rem;
+}
+
 .theme-option {
   background: var(--card-muted);
   color: var(--text);
@@ -735,8 +917,28 @@ input {
     grid-template-columns: 1fr;
   }
 
+  .dashboard-shell.is-collapsed {
+    grid-template-columns: 1fr;
+  }
+
   .dashboard-sidebar {
     min-height: auto;
+  }
+
+  .dashboard-sidebar.is-collapsed {
+    padding: 1.25rem;
+  }
+
+  .dashboard-sidebar.is-collapsed .sidebar-link {
+    justify-content: flex-start;
+    padding-inline: 1rem;
+  }
+
+  .sidebar-copy.is-hidden,
+  .sidebar-link-label.is-hidden {
+    opacity: 1;
+    width: auto;
+    overflow: visible;
   }
 
   .feature-grid,
@@ -749,6 +951,10 @@ input {
   .hero-panel {
     flex-direction: column;
   }
+
+  .app-header-row {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 720px) {
@@ -757,20 +963,34 @@ input {
     padding: 0.9rem;
   }
 
+  .app-header-row {
+    padding: 0.9rem;
+  }
+
+  .app-navbar {
+    padding: 0.9rem 0 0.9rem 0.9rem;
+    width: min(280px, calc(100vw - 1.8rem)) !important;
+    max-width: calc(100vw - 1.8rem);
+    border-top-right-radius: 28px;
+    border-bottom-right-radius: 28px;
+  }
+
   .topbar-actions {
     width: 100%;
     justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .install-callout {
     min-width: 0;
-    flex: 1;
+    flex: 1 1 100%;
   }
 
   .notifications-popover {
-    top: 7rem;
+    top: 8.6rem;
     left: 0;
     right: 0;
-    width: 100%;
+    width: auto;
+    max-width: 100%;
   }
 }

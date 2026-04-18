@@ -1,4 +1,14 @@
 import {
+  ActionIcon,
+  AppShell,
+  Burger,
+  Group,
+  NavLink,
+  ScrollArea,
+  Stack
+} from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
+import {
   Bell,
   CalendarDays,
   CheckCheck,
@@ -49,6 +59,8 @@ export function PlannerDashboard({
   onLogout
 }: PlannerDashboardProps) {
   const [activeSection, setActiveSection] = useState<Section>('Painel');
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
+  const [mobileOpened, setMobileOpened] = useState(false);
   const [selectedPartyId, setSelectedPartyId] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [partyForm, setPartyForm] = useState({
@@ -59,7 +71,11 @@ export function PlannerDashboard({
     estimatedBudget: ''
   });
   const [taskForm, setTaskForm] = useState({ title: '', assignee: '' });
-  const [guestForm, setGuestForm] = useState({ name: '', group: '', status: 'Pendente' as GuestStatus });
+  const [guestForm, setGuestForm] = useState({
+    name: '',
+    group: '',
+    status: 'Pendente' as GuestStatus
+  });
   const [budgetForm, setBudgetForm] = useState({ label: '', category: '', amount: '' });
   const [actionError, setActionError] = useState('');
 
@@ -75,6 +91,7 @@ export function PlannerDashboard({
 
   const parties = dashboardQuery.data?.parties ?? [];
   const notifications = dashboardQuery.data?.notifications ?? [];
+  const isMobile = useMediaQuery('(max-width: 48em)');
 
   useEffect(() => {
     if (!selectedPartyId && parties[0]) {
@@ -180,63 +197,175 @@ export function PlannerDashboard({
     }
   }
 
-  return (
-    <main className="dashboard-shell">
-      <aside className="dashboard-sidebar">
-        <div>
-          <div className="brand-block">
-            <span className="brand-mark">PP</span>
-            <div>
-              <strong>Party Planner</strong>
-              <p>PWA + React</p>
-            </div>
-          </div>
+  function handleNavbarToggle() {
+    if (isMobile) {
+      setMobileOpened((current) => !current);
+      return;
+    }
 
-          <nav className="sidebar-nav">
+    setDesktopCollapsed((current) => !current);
+  }
+
+  function handleSectionChange(section: Section) {
+    setActiveSection(section);
+
+    if (isMobile) {
+      setMobileOpened(false);
+    }
+  }
+
+  const isCollapsedDesktop = !isMobile && desktopCollapsed;
+
+  return (
+    <AppShell
+      className="dashboard-shell-ui"
+      navbar={{
+        width: isMobile ? 280 : desktopCollapsed ? 92 : 280,
+        breakpoint: 'sm',
+        collapsed: { mobile: !mobileOpened, desktop: false }
+      }}
+      padding="md"
+    >
+      <AppShell.Navbar
+        className={!isMobile && desktopCollapsed ? 'app-navbar is-collapsed' : 'app-navbar'}
+        p="md"
+      >
+        <AppShell.Section>
+          <div className="navbar-toggle-row">
+            <ActionIcon
+              aria-label={isMobile ? 'Fechar menu lateral' : desktopCollapsed ? 'Expandir menu lateral' : 'Retrair menu lateral'}
+              className="app-action navbar-toggle-button"
+              onClick={handleNavbarToggle}
+              radius="xl"
+              size="xl"
+              variant="default"
+            >
+              <Burger aria-hidden opened={isMobile ? mobileOpened : !desktopCollapsed} size="sm" />
+            </ActionIcon>
+          </div>
+        </AppShell.Section>
+
+        <AppShell.Section className="app-navbar-grow" component={ScrollArea}>
+          <Stack gap="xs">
             {sections.map((section) => {
               const Icon = section.icon;
               return (
-                <button
+                <NavLink
                   key={section.id}
-                  className={section.id === activeSection ? 'sidebar-link is-active' : 'sidebar-link'}
-                  onClick={() => setActiveSection(section.id)}
-                  type="button"
-                >
-                  <Icon size={18} />
-                  {section.label}
-                </button>
+                  active={section.id === activeSection}
+                  className="mantine-nav-link"
+                  label={!isCollapsedDesktop ? section.label : undefined}
+                  leftSection={<Icon size={18} />}
+                  onClick={() => handleSectionChange(section.id)}
+                  styles={{
+                    root: {
+                      borderRadius: '18px',
+                      color: section.id === activeSection ? '#fff7ed' : 'var(--sidebar-text)',
+                      width: isCollapsedDesktop ? '56px' : '100%',
+                      height: isCollapsedDesktop ? '56px' : 'auto',
+                      minHeight: isCollapsedDesktop ? '56px' : '48px',
+                      padding: isCollapsedDesktop ? '0' : '12px 16px',
+                      marginInline: isCollapsedDesktop ? 'auto' : undefined,
+                      justifyContent: isCollapsedDesktop ? 'center' : undefined,
+                      background:
+                        section.id === activeSection ? 'var(--accent)' : 'transparent',
+                      transition: 'background 0.18s ease, color 0.18s ease',
+                      '&:hover': {
+                        background:
+                          section.id === activeSection ? 'var(--accent)' : '#d96733',
+                        color:
+                          section.id === activeSection ? '#fff7ed' : '#1b1f27'
+                      }
+                    },
+                    body: isCollapsedDesktop
+                      ? {
+                          display: 'none'
+                        }
+                      : undefined,
+                    section: {
+                      color: 'inherit',
+                      marginInlineEnd: isCollapsedDesktop ? '0' : undefined,
+                      minWidth: isCollapsedDesktop ? '18px' : undefined,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    },
+                    label: {
+                      color: 'inherit',
+                      fontWeight: 600
+                    }
+                  }}
+                  title={section.label}
+                />
               );
             })}
-          </nav>
-        </div>
+          </Stack>
+        </AppShell.Section>
 
-        <button className="ghost-button logout-button" onClick={onLogout} type="button">
-          <LogOut size={16} />
-          Sair da conta
-        </button>
-      </aside>
+        <AppShell.Section>
+          <button className="ghost-button logout-button" onClick={onLogout} type="button">
+            <LogOut size={16} />
+            {!isMobile && desktopCollapsed ? '' : 'Sair da conta'}
+          </button>
+        </AppShell.Section>
+      </AppShell.Navbar>
 
-      <section className="dashboard-main">
-        <header className="topbar">
-          <div>
-            <span className="eyebrow">Mesmo backend, nova experiencia</span>
-            <h1>{activeSection}</h1>
-            <p>
-              {session.user.name} | {session.user.email}
-            </p>
-          </div>
-
-          <div className="topbar-actions">
-            <div className="install-callout">
-              <span>PWA pronta para instalar</span>
-              <small>Abra no Chrome ou Edge e use "Instalar aplicativo".</small>
+      <AppShell.Main className="dashboard-main">
+        <header className="app-header">
+          <Group className="app-header-row" justify="space-between" wrap="nowrap">
+            <div>
+              <span className="eyebrow">Mesmo backend, nova experiencia</span>
+              <h1 className="app-header-title">{activeSection}</h1>
+              <p className="app-header-copy">
+                {session.user.name} | {session.user.email}
+              </p>
             </div>
 
-            <button className="icon-button" onClick={handleOpenNotifications} type="button">
-              <Bell size={18} />
-              {unreadNotifications > 0 ? <span className="badge">{Math.min(unreadNotifications, 9)}</span> : null}
-            </button>
-          </div>
+            <Group className="topbar-actions" gap="sm" wrap="nowrap">
+              {isMobile ? (
+                <ActionIcon
+                  aria-label="Abrir menu lateral"
+                  className="app-action"
+                  onClick={handleNavbarToggle}
+                  radius="xl"
+                  size="xl"
+                  variant="default"
+                >
+                  <Burger aria-hidden opened={mobileOpened} size="sm" />
+                </ActionIcon>
+              ) : null}
+
+              <div className="install-callout">
+                <span>PWA pronta para instalar</span>
+                <small>Abra no Chrome ou Edge e use "Instalar aplicativo".</small>
+              </div>
+
+              <ActionIcon
+                aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+                className="app-action"
+                onClick={() => void onThemeChange(theme === 'dark' ? 'light' : 'dark')}
+                radius="xl"
+                size="xl"
+                variant="default"
+              >
+                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </ActionIcon>
+
+              <ActionIcon
+                aria-label="Abrir notificacoes"
+                className="app-action notification-trigger"
+                onClick={handleOpenNotifications}
+                radius="xl"
+                size="xl"
+                variant="default"
+              >
+                <Bell size={18} />
+                {unreadNotifications > 0 ? (
+                  <span className="badge">{Math.min(unreadNotifications, 9)}</span>
+                ) : null}
+              </ActionIcon>
+            </Group>
+          </Group>
         </header>
 
         {notificationsOpen ? (
@@ -587,29 +716,9 @@ export function PlannerDashboard({
                 />
               </label>
 
-              <div className="theme-switcher">
-                <div>
-                  <strong>Tema da interface</strong>
-                  <p>Escolha entre o modo claro e o modo escuro para a aplicacao.</p>
-                </div>
-                <div className="theme-options">
-                  <button
-                    className={theme === 'light' ? 'theme-option is-active' : 'theme-option'}
-                    onClick={() => void onThemeChange('light')}
-                    type="button"
-                  >
-                    <Sun size={16} />
-                    White
-                  </button>
-                  <button
-                    className={theme === 'dark' ? 'theme-option is-active' : 'theme-option'}
-                    onClick={() => void onThemeChange('dark')}
-                    type="button"
-                  >
-                    <Moon size={16} />
-                    Dark
-                  </button>
-                </div>
+              <div className="theme-hint">
+                <strong>Tema da interface</strong>
+                <p>Use o icone no topo para alternar entre white e dark.</p>
               </div>
             </article>
 
@@ -623,7 +732,7 @@ export function PlannerDashboard({
             </article>
           </section>
         ) : null}
-      </section>
-    </main>
+      </AppShell.Main>
+    </AppShell>
   );
 }
