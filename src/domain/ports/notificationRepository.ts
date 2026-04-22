@@ -3,6 +3,7 @@ import type { AppNotification, NotificationSettings } from '@/domain/entities/no
 export interface NotificationRepository {
   getAll(): Promise<AppNotification[]>;
   markAllAsRead(): Promise<{ updated: number }>;
+  clearAll(): Promise<{ deleted: number }>;
 }
 
 export interface NotificationSettingsRepository {

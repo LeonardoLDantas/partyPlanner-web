@@ -4,7 +4,8 @@ import type { GuestStatus, Party } from '@/domain/entities/party';
 import type {
   CreateBudgetItemInput,
   CreatePartyInput,
-  CreateTaskInput
+  CreateTaskInput,
+  UpdatePartyInput
 } from '@/domain/ports/partyRepository';
 import { container } from '@/infrastructure/container';
 
@@ -40,9 +41,32 @@ export function useDashboardData(enabled: boolean) {
     }
   });
 
+  const clearAllNotifications = useMutation({
+    mutationFn: () => container.notificationRepository.clearAll(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: dashboardKey });
+    }
+  });
+
   const createParty = useMutation({
     mutationFn: async (variables: CreatePartyInput) =>
       container.partyRepository.createParty(variables),
+    onSuccess: (updatedParty) => {
+      queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
+        syncPartyIntoDashboard(current, updatedParty)
+      );
+    }
+  });
+
+  const updateParty = useMutation({
+    mutationFn: async (variables: { partyId: string } & UpdatePartyInput) =>
+      container.partyRepository.updateParty(variables.partyId, {
+        name: variables.name,
+        category: variables.category,
+        date: variables.date,
+        location: variables.location,
+        estimatedBudget: variables.estimatedBudget
+      }),
     onSuccess: (updatedParty) => {
       queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
         syncPartyIntoDashboard(current, updatedParty)
@@ -104,10 +128,12 @@ export function useDashboardData(enabled: boolean) {
   return {
     dashboardQuery,
     createParty,
+    updateParty,
     createTask,
     createGuest,
     createBudgetItem,
     toggleTask,
-    markAllAsRead
+    markAllAsRead,
+    clearAllNotifications
   };
 }

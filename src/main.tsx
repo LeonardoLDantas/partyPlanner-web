@@ -1,4 +1,5 @@
 import '@mantine/core/styles.css';
+import 'react-day-picker/dist/style.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { MantineProvider } from '@mantine/core';

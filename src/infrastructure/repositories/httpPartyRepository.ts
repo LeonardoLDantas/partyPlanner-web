@@ -3,7 +3,8 @@ import type {
   CreateGuestInput,
   CreatePartyInput,
   CreateTaskInput,
-  PartyRepository
+  PartyRepository,
+  UpdatePartyInput
 } from '@/domain/ports/partyRepository';
 import type { Party } from '@/domain/entities/party';
 import type { HttpClient } from '@/infrastructure/http/httpClient';
@@ -18,6 +19,13 @@ export class HttpPartyRepository implements PartyRepository {
   createParty(input: CreatePartyInput) {
     return this.httpClient.request<Party>('/api/parties', {
       method: 'POST',
+      body: JSON.stringify(input)
+    });
+  }
+
+  updateParty(partyId: string, input: UpdatePartyInput) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}`, {
+      method: 'PUT',
       body: JSON.stringify(input)
     });
   }
