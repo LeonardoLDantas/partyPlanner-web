@@ -1,5 +1,6 @@
 import {
   ActionIcon,
+  Avatar,
   AppShell,
   Badge,
   Button,
@@ -10,29 +11,37 @@ import {
   Paper,
   Popover,
   ScrollArea,
+  SegmentedControl,
   Select,
   SimpleGrid,
   Stack,
   Text,
   TextInput,
+  ThemeIcon,
   Title
 } from '@mantine/core';
 import { useMediaQuery } from '@mantine/hooks';
 import {
   ArrowLeft,
   Bell,
+  Calendar,
   CalendarDays,
   CheckCheck,
+  ChevronRight,
   CircleDollarSign,
   CircleAlert,
   ExternalLink,
   LayoutDashboard,
+  Mail,
   MapPinned,
   LogOut,
   Moon,
   PencilLine,
+  Phone,
   Plus,
+  Search,
   Settings2,
+  SlidersHorizontal,
   Sparkles,
   Sun,
   Users
@@ -58,7 +67,7 @@ import type { ThemeMode } from '@/domain/entities/notification';
 import { useDashboardData } from '@/presentation/hooks/useDashboardData';
 import { currencyFormatter, formatDateTime } from '@/shared/utils/formatters';
 
-const sections = [
+const desktopSections = [
   { id: 'Painel', label: 'Painel', icon: LayoutDashboard },
   { id: 'Planejar', label: 'Planejar', icon: Sparkles },
   { id: 'Operacao', label: 'Operacao', icon: CheckCheck },
@@ -89,15 +98,21 @@ type PartyFormState = {
   name: string;
   category: string;
   date: string;
+  time: string;
   street: string;
   neighborhood: string;
   houseNumber: string;
   zipCode: string;
   referencePoint: string;
+  expectedGuests: string;
   estimatedBudget: string;
+  themeChoice: string;
+  paletteChoice: string;
 };
 
 type PlanningView = 'list' | 'create' | 'detail';
+type GuestFilter = 'Todos' | GuestStatus;
+type NotificationFilter = 'Todas' | 'Nao lidas' | 'Lembretes' | 'Atualizacoes';
 type ToastNotification = {
   id: string;
   title: string;
@@ -117,12 +132,16 @@ function createEmptyPartyForm(): PartyFormState {
     name: '',
     category: 'Aniversario',
     date: '',
+    time: '19:00',
     street: '',
     neighborhood: '',
     houseNumber: '',
     zipCode: '',
     referencePoint: '',
-    estimatedBudget: ''
+    expectedGuests: '60',
+    estimatedBudget: '',
+    themeChoice: 'Aniversario',
+    paletteChoice: 'purple'
   };
 }
 
@@ -142,7 +161,9 @@ function createPartyFormFromParty(
     name: string;
     category: string;
     date: string;
+    time?: string;
     location: string;
+    expectedGuests?: number;
     budget: { estimated: number };
   } | null | undefined
 ): PartyFormState {
@@ -158,16 +179,127 @@ function createPartyFormFromParty(
     name: party.name,
     category: party.category || 'Aniversario',
     date: party.date || '',
+    time: party.time || '19:00',
     street: streetSplit[0] ?? '',
     houseNumber: streetSplit[1] ?? '',
     neighborhood,
     zipCode: formatZipCode(zipCodeSection.replace(/^CEP\s*/i, '')),
     referencePoint: referenceSection.replace(/^Ref\.:\s*/i, ''),
-    estimatedBudget: String(party.budget.estimated ?? '')
+    expectedGuests: String(party.expectedGuests ?? 0),
+    estimatedBudget: String(party.budget.estimated ?? ''),
+    themeChoice: party.category || 'Aniversario',
+    paletteChoice: 'purple'
   };
 }
 
-type Section = (typeof sections)[number]['id'];
+function getFirstName(fullName: string) {
+  return fullName.trim().split(/\s+/)[0] ?? fullName;
+}
+
+function getInitials(name: string) {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+}
+
+function formatPartyDateLabel(value: string) {
+  if (!dayjs(value).isValid()) {
+    return value;
+  }
+
+  return dayjs(value).format('ddd, DD MMM YYYY');
+}
+
+function getDaysLeftLabel(value: string) {
+  if (!dayjs(value).isValid()) {
+    return '--';
+  }
+
+  const diff = dayjs(value).startOf('day').diff(dayjs().startOf('day'), 'day');
+
+  if (diff < 0) {
+    return 'Encerrada';
+  }
+
+  if (diff === 0) {
+    return 'Hoje';
+  }
+
+  return `${diff} dias`;
+}
+
+function getCountdownParts(date: string, time: string) {
+  const eventDateTime = dayjs(`${date} ${time}`);
+
+  if (!eventDateTime.isValid()) {
+    return { days: '--', hours: '--', minutes: '--', seconds: '--' };
+  }
+
+  const now = dayjs();
+  const diff = Math.max(eventDateTime.diff(now, 'second'), 0);
+  const days = Math.floor(diff / 86400);
+  const hours = Math.floor((diff % 86400) / 3600);
+  const minutes = Math.floor((diff % 3600) / 60);
+  const seconds = diff % 60;
+
+  return {
+    days: String(days).padStart(2, '0'),
+    hours: String(hours).padStart(2, '0'),
+    minutes: String(minutes).padStart(2, '0'),
+    seconds: String(seconds).padStart(2, '0')
+  };
+}
+
+function getNotificationCategory(type: string): NotificationFilter {
+  if (type === 'budget' || type === 'task') {
+    return 'Lembretes';
+  }
+
+  if (type === 'party' || type === 'guest') {
+    return 'Atualizacoes';
+  }
+
+  return 'Todas';
+}
+
+function getPartyArtwork(category: string) {
+  switch (category) {
+    case 'Casamento':
+      return '/illustrations/wedding-hero.svg';
+    case 'Formatura':
+      return '/illustrations/graduation-hero.svg';
+    default:
+      return '/illustrations/birthday-hero.svg';
+  }
+}
+
+function getSectionTitle(section: Section) {
+  switch (section) {
+    case 'Painel':
+      return 'Inicio';
+    case 'Planejar':
+      return 'Eventos';
+    case 'Convidados':
+      return 'Convidados';
+    case 'Tarefas':
+      return 'Tarefas';
+    case 'Perfil':
+    case 'Ajustes':
+      return 'Perfil';
+    case 'Notificacoes':
+      return 'Notificacoes';
+    case 'Operacao':
+      return 'Operacao';
+    default:
+      return section;
+  }
+}
+
+type DesktopSection = (typeof desktopSections)[number]['id'];
+type Section = DesktopSection | 'Convidados' | 'Tarefas' | 'Perfil' | 'Notificacoes';
 
 type PlannerDashboardProps = {
   session: AuthSession;
@@ -226,13 +358,22 @@ export function PlannerDashboard({
   const [toastNotifications, setToastNotifications] = useState<ToastNotification[]>([]);
   const [plannerCalendarOpen, setPlannerCalendarOpen] = useState(false);
   const [partyForm, setPartyForm] = useState<PartyFormState>(createEmptyPartyForm);
-  const [taskForm, setTaskForm] = useState({ title: '', assignee: '' });
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    assignee: '',
+    dueDate: '',
+    status: 'Pendente'
+  });
   const [guestForm, setGuestForm] = useState({
     name: '',
     group: '',
     status: 'Pendente' as GuestStatus
   });
   const [budgetForm, setBudgetForm] = useState({ label: '', category: '', amount: '' });
+  const [plannerStep, setPlannerStep] = useState(1);
+  const [guestFilter, setGuestFilter] = useState<GuestFilter>('Todos');
+  const [guestSearch, setGuestSearch] = useState('');
+  const [notificationFilter, setNotificationFilter] = useState<NotificationFilter>('Todas');
   const [actionError, setActionError] = useState('');
 
   const {
@@ -355,6 +496,19 @@ export function PlannerDashboard({
   );
   const globalBudget = parties.reduce((sum, party) => sum + party.budget.spent, 0);
   const unreadNotifications = notifications.filter((notification) => !notification.isRead).length;
+  const featuredParty = useMemo(() => {
+    if (parties.length === 0) {
+      return null;
+    }
+
+    const upcomingParties = [...parties].sort((firstParty, secondParty) => {
+      const firstDate = dayjs(firstParty.date).valueOf();
+      const secondDate = dayjs(secondParty.date).valueOf();
+      return firstDate - secondDate;
+    });
+
+    return upcomingParties[0] ?? null;
+  }, [parties]);
   const overviewChartData = useMemo(
     () =>
       [...parties]
@@ -383,6 +537,71 @@ export function PlannerDashboard({
         }),
     [parties]
   );
+  const featuredGuests = featuredParty?.guests.slice(0, 5) ?? [];
+  const featuredTasks = featuredParty?.tasks.slice(0, 4) ?? [];
+  const featuredConfirmedGuests =
+    featuredParty?.guests.filter((guest) => guest.status === 'Confirmado').length ?? 0;
+  const featuredPendingGuests =
+    featuredParty?.guests.filter((guest) => guest.status === 'Pendente').length ?? 0;
+  const featuredDeclinedGuests =
+    featuredParty?.guests.filter((guest) => guest.status === 'Recusou').length ?? 0;
+  const mobileParty = selectedParty ?? featuredParty;
+  const mobileGuests = mobileParty?.guests ?? [];
+  const mobileTasks = mobileParty?.tasks ?? [];
+  const mobileBudgetItems = mobileParty?.budget.items ?? [];
+  const filteredMobileGuests = mobileGuests.filter((guest) => {
+    const matchesFilter = guestFilter === 'Todos' || guest.status === guestFilter;
+    const search = guestSearch.trim().toLowerCase();
+    const matchesSearch =
+      search.length === 0 ||
+      guest.name.toLowerCase().includes(search) ||
+      guest.group.toLowerCase().includes(search);
+
+    return matchesFilter && matchesSearch;
+  });
+  const hasGuestFilters = guestFilter !== 'Todos' || guestSearch.trim().length > 0;
+  const filteredNotifications = notifications.filter((notification) => {
+    if (notificationFilter === 'Nao lidas' && notification.isRead) {
+      return false;
+    }
+
+    if (notificationFilter === 'Lembretes') {
+      return getNotificationCategory(notification.type) === 'Lembretes';
+    }
+
+    if (notificationFilter === 'Atualizacoes') {
+      return getNotificationCategory(notification.type) === 'Atualizacoes';
+    }
+
+    return true;
+  });
+  const totalTaskCount = parties.reduce((count, party) => count + party.tasks.length, 0);
+  const completedTaskCount = parties.reduce(
+    (count, party) => count + party.tasks.filter((task) => task.done).length,
+    0
+  );
+  const profileCards = [
+    {
+      id: 'account',
+      label: 'Minha conta',
+      description: 'Veja e edite suas informacoes pessoais.',
+      icon: Users
+    },
+    {
+      id: 'preferences',
+      label: 'Preferencias',
+      description: 'Personalize o visual e o comportamento do app.',
+      icon: Settings2
+    },
+    {
+      id: 'notifications',
+      label: 'Notificacoes',
+      description: 'Escolha como e quando receber alertas.',
+      icon: Bell
+    }
+  ] as const;
+  const firstName = getFirstName(session.user.name);
+  const countdown = featuredParty ? getCountdownParts(featuredParty.date, featuredParty.time) : null;
 
   async function handleCreateParty(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -394,7 +613,9 @@ export function PlannerDashboard({
         name: partyForm.name.trim(),
         category: partyForm.category.trim(),
         date: partyForm.date.trim(),
+        time: partyForm.time.trim(),
         location: formattedLocation,
+        expectedGuests: Number(partyForm.expectedGuests) || 0,
         estimatedBudget: Number(partyForm.estimatedBudget) || 0
       });
 
@@ -427,7 +648,9 @@ export function PlannerDashboard({
         name: partyForm.name.trim(),
         category: partyForm.category.trim(),
         date: partyForm.date.trim(),
+        time: partyForm.time.trim(),
         location: buildPartyLocation(partyForm),
+        expectedGuests: Number(partyForm.expectedGuests) || 0,
         estimatedBudget: Number(partyForm.estimatedBudget) || 0
       });
 
@@ -454,7 +677,7 @@ export function PlannerDashboard({
     try {
       setActionError('');
       await createTask.mutateAsync({ partyId: selectedParty.id, ...taskForm });
-      setTaskForm({ title: '', assignee: '' });
+      setTaskForm({ title: '', assignee: '', dueDate: '', status: 'Pendente' });
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Nao foi possivel criar a tarefa.');
     }
@@ -496,6 +719,16 @@ export function PlannerDashboard({
   }
 
   async function handleOpenNotifications() {
+    if (isMobile) {
+      setActiveSection('Notificacoes');
+
+      if (unreadNotifications > 0) {
+        await markAllAsRead.mutateAsync();
+      }
+
+      return;
+    }
+
     const nextState = !notificationsOpen;
     setNotificationsOpen(nextState);
 
@@ -523,6 +756,19 @@ export function PlannerDashboard({
     }
 
     setDesktopCollapsed((current) => !current);
+  }
+
+  function handleQuickCreateParty() {
+    setActiveSection('Planejar');
+    setPlanningView('create');
+    setPlanningPartyId('');
+    setPartyForm(createEmptyPartyForm());
+    setPlannerStep(1);
+    setPlannerCalendarOpen(false);
+
+    if (isMobile) {
+      setMobileOpened(false);
+    }
   }
 
   function handleSectionChange(section: Section) {
@@ -583,130 +829,150 @@ export function PlannerDashboard({
     dropdown: 'planner-field-dropdown',
     option: 'planner-field-option'
   } as const;
+  const mobileSegmentedStyles = {
+    root: {
+      background: 'rgba(255,255,255,0.72)',
+      border: '1px solid rgba(116, 79, 255, 0.08)',
+      borderRadius: '999px',
+      boxShadow: 'var(--shadow)'
+    },
+    indicator: {
+      background: 'linear-gradient(145deg, #4a27ff 0%, #7c44ff 58%, #ff4ba0 100%)',
+      borderRadius: '999px'
+    },
+    label: {
+      fontWeight: 700,
+      color: 'var(--text-soft)'
+    }
+  } as const;
+  const mobileSurfaceStyles = {
+    background: 'var(--card)',
+    border: '1px solid var(--border)',
+    boxShadow: 'var(--shadow)'
+  } as const;
 
   return (
     <AppShell
       className="dashboard-shell-ui"
       navbar={{
-        width: isMobile ? 280 : desktopCollapsed ? 92 : 280,
+        width: isMobile ? 0 : desktopCollapsed ? 92 : 280,
         breakpoint: 'sm',
         collapsed: { mobile: !mobileOpened, desktop: false }
       }}
       padding="md"
     >
-      <AppShell.Navbar
-        className={!isMobile && desktopCollapsed ? 'app-navbar is-collapsed' : 'app-navbar'}
-        p="md"
-      >
-        <AppShell.Section>
-          <div className="navbar-toggle-row">
-            <ActionIcon
-              aria-label={isMobile ? 'Fechar menu lateral' : desktopCollapsed ? 'Expandir menu lateral' : 'Retrair menu lateral'}
-              className="app-action navbar-toggle-button"
-              onClick={handleNavbarToggle}
-              radius="xl"
-              size="xl"
-              variant="default"
-            >
-              <Burger aria-hidden opened={isMobile ? mobileOpened : !desktopCollapsed} size="sm" />
-            </ActionIcon>
-          </div>
-        </AppShell.Section>
+      {!isMobile ? (
+        <AppShell.Navbar
+          className={desktopCollapsed ? 'app-navbar is-collapsed' : 'app-navbar'}
+          p="md"
+        >
+          <AppShell.Section>
+            <div className="navbar-toggle-row">
+              <ActionIcon
+                aria-label={desktopCollapsed ? 'Expandir menu lateral' : 'Retrair menu lateral'}
+                className="app-action navbar-toggle-button"
+                onClick={handleNavbarToggle}
+                radius="xl"
+                size="xl"
+                variant="default"
+              >
+                <Burger aria-hidden opened={!desktopCollapsed} size="sm" />
+              </ActionIcon>
+            </div>
+          </AppShell.Section>
 
-        <AppShell.Section className="app-navbar-grow" component={ScrollArea}>
-          <Stack gap="xs">
-            {sections.map((section) => {
-              const Icon = section.icon;
-              return (
-                <NavLink
-                  key={section.id}
-                  active={section.id === activeSection}
-                  className="mantine-nav-link"
-                  label={!isCollapsedDesktop ? section.label : undefined}
-                  leftSection={<Icon size={18} />}
-                  onClick={() => handleSectionChange(section.id)}
-                  styles={{
-                    root: {
-                      borderRadius: '18px',
-                      color: section.id === activeSection ? '#fff7ed' : 'var(--sidebar-text)',
-                      width: isCollapsedDesktop ? '56px' : '100%',
-                      height: isCollapsedDesktop ? '56px' : 'auto',
-                      minHeight: isCollapsedDesktop ? '56px' : '48px',
-                      padding: isCollapsedDesktop ? '0' : '12px 16px',
-                      marginInline: isCollapsedDesktop ? 'auto' : undefined,
-                      justifyContent: isCollapsedDesktop ? 'center' : undefined,
-                      background:
-                        section.id === activeSection ? 'var(--accent)' : 'transparent',
-                      transition: 'background 0.18s ease, color 0.18s ease',
-                      '&:hover': {
+          <AppShell.Section className="app-navbar-grow" component={ScrollArea}>
+            <Stack gap="xs">
+              {desktopSections.map((section) => {
+                const Icon = section.icon;
+                return (
+                  <NavLink
+                    key={section.id}
+                    active={section.id === activeSection}
+                    className="mantine-nav-link"
+                    label={!isCollapsedDesktop ? section.label : undefined}
+                    leftSection={<Icon size={18} />}
+                    onClick={() => handleSectionChange(section.id)}
+                    styles={{
+                      root: {
+                        borderRadius: '18px',
+                        color: section.id === activeSection ? '#fff7ed' : 'var(--sidebar-text)',
+                        width: isCollapsedDesktop ? '56px' : '100%',
+                        height: isCollapsedDesktop ? '56px' : 'auto',
+                        minHeight: isCollapsedDesktop ? '56px' : '48px',
+                        padding: isCollapsedDesktop ? '0' : '12px 16px',
+                        marginInline: isCollapsedDesktop ? 'auto' : undefined,
+                        justifyContent: isCollapsedDesktop ? 'center' : undefined,
                         background:
-                          section.id === activeSection ? 'var(--accent)' : '#d96733',
-                        color:
-                          section.id === activeSection ? '#fff7ed' : '#1b1f27'
-                      }
-                    },
-                    body: isCollapsedDesktop
-                      ? {
-                          display: 'none'
+                          section.id === activeSection ? 'var(--accent)' : 'transparent',
+                        transition: 'background 0.18s ease, color 0.18s ease',
+                        '&:hover': {
+                          background:
+                            section.id === activeSection ? 'var(--accent)' : '#d96733',
+                          color:
+                            section.id === activeSection ? '#fff7ed' : '#1b1f27'
                         }
-                      : undefined,
-                    section: {
-                      color: 'inherit',
-                      marginInlineEnd: isCollapsedDesktop ? '0' : undefined,
-                      minWidth: isCollapsedDesktop ? '18px' : undefined,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    },
-                    label: {
-                      color: 'inherit',
-                      fontWeight: 600
-                    }
-                  }}
-                  title={section.label}
-                />
-              );
-            })}
-          </Stack>
-        </AppShell.Section>
+                      },
+                      body: isCollapsedDesktop
+                        ? {
+                            display: 'none'
+                          }
+                        : undefined,
+                      section: {
+                        color: 'inherit',
+                        marginInlineEnd: isCollapsedDesktop ? '0' : undefined,
+                        minWidth: isCollapsedDesktop ? '18px' : undefined,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      },
+                      label: {
+                        color: 'inherit',
+                        fontWeight: 600
+                      }
+                    }}
+                    title={section.label}
+                  />
+                );
+              })}
+            </Stack>
+          </AppShell.Section>
 
-        <AppShell.Section>
-          <button className="ghost-button logout-button" onClick={onLogout} type="button">
-            <LogOut size={16} />
-            {!isMobile && desktopCollapsed ? '' : 'Sair da conta'}
-          </button>
-        </AppShell.Section>
-      </AppShell.Navbar>
+          <AppShell.Section>
+            <button className="ghost-button logout-button" onClick={onLogout} type="button">
+              <LogOut size={16} />
+              {desktopCollapsed ? '' : 'Sair da conta'}
+            </button>
+          </AppShell.Section>
+        </AppShell.Navbar>
+      ) : null}
 
       <AppShell.Main className="dashboard-main">
         <header className="app-header">
           <Group className="app-header-row" justify="space-between" wrap="nowrap">
-            <div>
-              <span className="eyebrow">Mesmo backend, nova experiencia</span>
-              <h1 className="app-header-title">{activeSection}</h1>
+            <div className="app-header-brand">
+              <img alt="Celebra" className="app-header-brand__logo app-header-brand__logo-light" src="/brand/celebra-mark-black.png" />
+              <img alt="Celebra" className="app-header-brand__logo app-header-brand__logo-dark" src="/brand/celebra-mark-white.png" />
+              <span className="eyebrow">
+                {isMobile ? 'PWA mobile-first' : 'Mesmo backend, nova experiencia'}
+              </span>
+              <h1 className="app-header-title">
+                {isMobile ? getSectionTitle(activeSection) : activeSection}
+              </h1>
               <p className="app-header-copy">
-                {session.user.name} | {session.user.email}
+                {isMobile
+                  ? `Oi, ${firstName}. Vamos planejar algo incrivel hoje.`
+                  : `${session.user.name} | ${session.user.email}`}
               </p>
             </div>
 
             <Group className="topbar-actions" gap="sm" wrap="nowrap">
-              {isMobile ? (
-                <ActionIcon
-                  aria-label="Abrir menu lateral"
-                  className="app-action"
-                  onClick={handleNavbarToggle}
-                  radius="xl"
-                  size="xl"
-                  variant="default"
-                >
-                  <Burger aria-hidden opened={mobileOpened} size="sm" />
-                </ActionIcon>
-              ) : null}
-
-              <div className="install-callout">
-                <span>PWA pronta para instalar</span>
-                <small>Abra no Chrome ou Edge e use "Instalar aplicativo".</small>
-              </div>
+              {isMobile ? null : (
+                <div className="install-callout">
+                  <span>PWA pronta para instalar</span>
+                  <small>Abra no Chrome ou Edge e use "Instalar aplicativo".</small>
+                </div>
+              )}
 
               <ActionIcon
                 aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
@@ -737,7 +1003,7 @@ export function PlannerDashboard({
           </Group>
         </header>
 
-    {notificationsOpen ? (
+    {!isMobile && notificationsOpen ? (
       <section className="notifications-popover card-light" ref={notificationsPanelRef}>
         <div className="inline-heading">
           <strong>Notificacoes</strong>
@@ -802,7 +1068,149 @@ export function PlannerDashboard({
           </section>
         ) : null}
 
-        {activeSection === 'Painel' ? (
+        {activeSection === 'Painel' && isMobile ? (
+          <section className="mobile-overview-shell">
+            {featuredParty ? (
+              <>
+                <article className="mobile-featured-event">
+                  <div className="mobile-featured-event__top">
+                    <Badge className="mobile-featured-badge" radius="xl" size="sm">
+                      Proxima festa
+                    </Badge>
+                    <span className="mobile-featured-event__category">{featuredParty.category}</span>
+                  </div>
+
+                  <div className="mobile-featured-event__body">
+                    <h2>{featuredParty.name}</h2>
+                    <p>{formatPartyDateLabel(featuredParty.date)}</p>
+                    <small>{featuredParty.location.split('|')[0]?.trim() || featuredParty.location}</small>
+                  </div>
+
+                  <img
+                    alt={featuredParty.category}
+                    className="mobile-featured-event__art"
+                    src={getPartyArtwork(featuredParty.category)}
+                  />
+                </article>
+
+                <section className="mobile-featured-metrics">
+                  <article className="mobile-chip-card">
+                    <span>Data</span>
+                    <strong>{dayjs(featuredParty.date).isValid() ? dayjs(featuredParty.date).format('DD MMM') : featuredParty.date}</strong>
+                    <small>{featuredParty.time || formatPartyDateLabel(featuredParty.date)}</small>
+                  </article>
+
+                  <article className="mobile-chip-card is-highlight">
+                    <span>Budget</span>
+                    <strong>{currencyFormatter.format(featuredParty.budget.estimated)}</strong>
+                    <small>{currencyFormatter.format(featuredParty.budget.spent)} usado</small>
+                  </article>
+
+                  <article className="mobile-chip-card">
+                    <span>Dias restantes</span>
+                    <strong>{getDaysLeftLabel(featuredParty.date)}</strong>
+                    <small>ate a realizacao</small>
+                  </article>
+                </section>
+
+                {countdown ? (
+                  <article className="mobile-countdown-card">
+                    <div className="mobile-countdown-card__head">
+                      <strong>Contagem regressiva</strong>
+                      <Sparkles size={18} />
+                    </div>
+                    <div className="mobile-countdown-grid">
+                      <div><strong>{countdown.days}</strong><span>dias</span></div>
+                      <div><strong>{countdown.hours}</strong><span>horas</span></div>
+                      <div><strong>{countdown.minutes}</strong><span>min</span></div>
+                      <div><strong>{countdown.seconds}</strong><span>seg</span></div>
+                    </div>
+                  </article>
+                ) : null}
+
+                <section className="mobile-insight-grid">
+                  <article className="mobile-section-card">
+                    <div className="mobile-section-card__head">
+                      <strong>Convidados</strong>
+                      <span>{featuredParty.guests.length} no total</span>
+                    </div>
+
+                    <div className="mobile-guest-row">
+                      {featuredGuests.map((guest, index) => (
+                        <div
+                          key={guest.id}
+                          className={`mobile-guest-avatar tone-${(index % 5) + 1}`}
+                          title={guest.name}
+                        >
+                          {getInitials(guest.name)}
+                        </div>
+                      ))}
+                      {featuredParty.guests.length > featuredGuests.length ? (
+                        <div className="mobile-guest-avatar more">
+                          +{featuredParty.guests.length - featuredGuests.length}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="mobile-guest-status">
+                      <span className="ok">{featuredConfirmedGuests} Confirmados</span>
+                      <span className="pending">{featuredPendingGuests} Pendentes</span>
+                      <span className="declined">{featuredDeclinedGuests} Recusaram</span>
+                    </div>
+                  </article>
+
+                  <article className="mobile-section-card">
+                    <div className="mobile-section-card__head">
+                      <strong>Tarefas</strong>
+                      <button
+                        className="mobile-inline-link"
+                        type="button"
+                        onClick={() => handleSectionChange('Operacao')}
+                      >
+                        Ver tudo
+                      </button>
+                    </div>
+
+                    <div className="mobile-task-list">
+                      {featuredTasks.length > 0 ? (
+                        featuredTasks.map((task) => (
+                          <div key={task.id} className="mobile-task-item">
+                            <span className={task.done ? 'task-state done' : 'task-state pending'} />
+                            <div>
+                              <strong>{task.title}</strong>
+                              <small>{task.assignee || 'Sem responsavel definido'}</small>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="empty-copy">Nenhuma tarefa cadastrada ainda.</p>
+                      )}
+                    </div>
+
+                    <button
+                      className="mobile-add-link"
+                      type="button"
+                      onClick={() => handleSectionChange('Planejar')}
+                    >
+                      + Ir para planejamento
+                    </button>
+                  </article>
+                </section>
+              </>
+            ) : (
+              <article className="mobile-empty-card">
+                <span className="eyebrow">Primeiro passo</span>
+                <h2>Crie sua primeira festa</h2>
+                <p>Assim que ela existir, esse painel mobile ganha destaque, convidados e tarefas.</p>
+                <Button color="orange" radius="xl" onClick={handleQuickCreateParty}>
+                  Criar festa agora
+                </Button>
+              </article>
+            )}
+          </section>
+        ) : null}
+
+        {activeSection === 'Painel' && !isMobile ? (
           <section className="stats-grid">
             <article className="stat-card">
               <CalendarDays size={18} />
@@ -832,7 +1240,7 @@ export function PlannerDashboard({
         ) : null}
         {actionError ? <div className="feedback error">{actionError}</div> : null}
 
-        {activeSection === 'Operacao' ? (
+        {activeSection === 'Operacao' && !isMobile ? (
           <section className="party-rail">
             {parties.map((party) => (
               <button
@@ -850,7 +1258,7 @@ export function PlannerDashboard({
           </section>
         ) : null}
 
-        {activeSection === 'Painel' ? (
+        {activeSection === 'Painel' && !isMobile ? (
           <section className="dashboard-overview">
             <article className="card-light overview-chart-card">
               <div className="overview-chart-header">
@@ -948,7 +1356,670 @@ export function PlannerDashboard({
           </section>
         ) : null}
 
-        {activeSection === 'Planejar' ? (
+        {activeSection === 'Planejar' && isMobile ? (
+          <section className="mobile-page-shell">
+            {planningView === 'create' ? (
+              <form className="mobile-wizard-shell" onSubmit={handleCreateParty}>
+                <SegmentedControl
+                  className="mobile-stepper-shell"
+                  data={[
+                    { label: '1', value: '1' },
+                    { label: '2', value: '2' },
+                    { label: '3', value: '3' },
+                    { label: '4', value: '4' }
+                  ]}
+                  fullWidth
+                  radius="xl"
+                  styles={mobileSegmentedStyles}
+                  value={String(plannerStep)}
+                  onChange={(value) => setPlannerStep(Number(value))}
+                />
+
+                {plannerStep === 1 ? (
+                  <Paper className="mobile-surface-card" p="lg" radius="xl" style={mobileSurfaceStyles}>
+                    <Group justify="space-between" mb="md">
+                      <div>
+                        <Text fw={700}>Dados do evento</Text>
+                        <Text c="dimmed" size="sm">Passo 1 de 4</Text>
+                      </div>
+                      <Badge radius="xl" variant="light">Essencial</Badge>
+                    </Group>
+
+                    <Stack gap="md">
+                      <TextInput
+                        classNames={plannerFieldClassNames}
+                        label="Nome do evento"
+                        placeholder="Ex.: Aniversario da Ana"
+                        radius="lg"
+                        styles={plannerFieldStyles}
+                        value={partyForm.name}
+                        onChange={(event) => setPartyForm((current) => ({ ...current, name: event.target.value }))}
+                      />
+                      <Select
+                        classNames={plannerSelectClassNames}
+                        data={partyCategories}
+                        label="Tipo de festa"
+                        radius="lg"
+                        styles={plannerSelectStyles}
+                        value={partyForm.category}
+                        onChange={(value) => setPartyForm((current) => ({ ...current, category: value ?? 'Aniversario' }))}
+                      />
+                      <SimpleGrid cols={2} spacing="sm">
+                        <TextInput
+                          classNames={plannerFieldClassNames}
+                          label="Data"
+                          radius="lg"
+                          styles={plannerFieldStyles}
+                          type="date"
+                          value={partyForm.date}
+                          onChange={(event) => setPartyForm((current) => ({ ...current, date: event.target.value }))}
+                        />
+                        <TextInput
+                          classNames={plannerFieldClassNames}
+                          label="Horario"
+                          radius="lg"
+                          styles={plannerFieldStyles}
+                          type="time"
+                          value={partyForm.time}
+                          onChange={(event) => setPartyForm((current) => ({ ...current, time: event.target.value }))}
+                        />
+                      </SimpleGrid>
+                    </Stack>
+                  </Paper>
+                ) : null}
+
+                {plannerStep === 2 ? (
+                  <Paper className="mobile-surface-card" p="lg" radius="xl" style={mobileSurfaceStyles}>
+                    <Group justify="space-between" mb="md">
+                      <div>
+                        <Text fw={700}>Local</Text>
+                        <Text c="dimmed" size="sm">Passo 2 de 4</Text>
+                      </div>
+                      <Badge radius="xl" variant="light">Endereco</Badge>
+                    </Group>
+
+                    <Stack gap="md">
+                      <TextInput
+                        classNames={plannerFieldClassNames}
+                        label="Rua"
+                        radius="lg"
+                        styles={plannerFieldStyles}
+                        value={partyForm.street}
+                        onChange={(event) => setPartyForm((current) => ({ ...current, street: event.target.value }))}
+                      />
+                      <SimpleGrid cols={2} spacing="sm">
+                        <TextInput
+                          classNames={plannerFieldClassNames}
+                          label="Bairro"
+                          radius="lg"
+                          styles={plannerFieldStyles}
+                          value={partyForm.neighborhood}
+                          onChange={(event) => setPartyForm((current) => ({ ...current, neighborhood: event.target.value }))}
+                        />
+                        <TextInput
+                          classNames={plannerFieldClassNames}
+                          label="Numero"
+                          radius="lg"
+                          styles={plannerFieldStyles}
+                          value={partyForm.houseNumber}
+                          onChange={(event) => setPartyForm((current) => ({ ...current, houseNumber: event.target.value }))}
+                        />
+                      </SimpleGrid>
+                      <SimpleGrid cols={2} spacing="sm">
+                        <TextInput
+                          classNames={plannerFieldClassNames}
+                          label="CEP"
+                          radius="lg"
+                          styles={plannerFieldStyles}
+                          value={partyForm.zipCode}
+                          onChange={(event) => setPartyForm((current) => ({ ...current, zipCode: formatZipCode(event.target.value) }))}
+                        />
+                        <TextInput
+                          classNames={plannerFieldClassNames}
+                          label="Referencia"
+                          radius="lg"
+                          styles={plannerFieldStyles}
+                          value={partyForm.referencePoint}
+                          onChange={(event) => setPartyForm((current) => ({ ...current, referencePoint: event.target.value }))}
+                        />
+                      </SimpleGrid>
+                    </Stack>
+                  </Paper>
+                ) : null}
+
+                {plannerStep === 3 ? (
+                  <Paper className="mobile-surface-card" p="lg" radius="xl" style={mobileSurfaceStyles}>
+                    <Group justify="space-between" mb="md">
+                      <div>
+                        <Text fw={700}>Plano</Text>
+                        <Text c="dimmed" size="sm">Passo 3 de 4</Text>
+                      </div>
+                      <Badge radius="xl" variant="light">Recursos</Badge>
+                    </Group>
+
+                    <Stack gap="md">
+                      <SimpleGrid cols={2} spacing="sm">
+                        <NumberInput
+                          allowDecimal={false}
+                          classNames={plannerFieldClassNames}
+                          hideControls
+                          label="Convidados esperados"
+                          radius="lg"
+                          styles={plannerFieldStyles}
+                          value={partyForm.expectedGuests}
+                          onChange={(value) =>
+                            setPartyForm((current) => ({
+                              ...current,
+                              expectedGuests: value === '' ? '' : String(value)
+                            }))
+                          }
+                        />
+                        <NumberInput
+                          allowDecimal
+                          classNames={plannerFieldClassNames}
+                          decimalScale={2}
+                          decimalSeparator=","
+                          hideControls
+                          label="Orcamento inicial"
+                          prefix="R$ "
+                          radius="lg"
+                          styles={plannerFieldStyles}
+                          thousandSeparator="."
+                          value={partyForm.estimatedBudget}
+                          onChange={(value) =>
+                            setPartyForm((current) => ({
+                              ...current,
+                              estimatedBudget: value === '' ? '' : String(value)
+                            }))
+                          }
+                        />
+                      </SimpleGrid>
+                      <div className="mobile-theme-grid">
+                        {partyCategories.slice(0, 3).map((category) => (
+                          <button
+                            key={category.value}
+                            className={partyForm.themeChoice === category.value ? 'mobile-theme-card is-active' : 'mobile-theme-card'}
+                            type="button"
+                            onClick={() => setPartyForm((current) => ({ ...current, themeChoice: category.value }))}
+                          >
+                            <img alt={category.label} src={getPartyArtwork(category.value)} />
+                            <span>{category.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </Stack>
+                  </Paper>
+                ) : null}
+
+                {plannerStep === 4 ? (
+                  <Paper className="mobile-surface-card" p="lg" radius="xl" style={mobileSurfaceStyles}>
+                    <Group justify="space-between" mb="md">
+                      <div>
+                        <Text fw={700}>Resumo</Text>
+                        <Text c="dimmed" size="sm">Passo 4 de 4</Text>
+                      </div>
+                      <Badge radius="xl" variant="light">Pronto</Badge>
+                    </Group>
+                    <div className="mobile-summary-card">
+                      <img alt={partyForm.themeChoice} className="mobile-summary-card__art" src={getPartyArtwork(partyForm.themeChoice)} />
+                      <div>
+                        <Text fw={700}>{partyForm.name || 'Nova festa'}</Text>
+                        <Text c="dimmed" size="sm">{partyForm.date || 'Data a definir'} {partyForm.time ? `| ${partyForm.time}` : ''}</Text>
+                        <Text c="dimmed" size="sm">{buildPartyLocation(partyForm) || 'Local a definir'}</Text>
+                        <Text c="dimmed" size="sm">{partyForm.expectedGuests || 0} convidados | {currencyFormatter.format(Number(partyForm.estimatedBudget) || 0)}</Text>
+                      </div>
+                    </div>
+                  </Paper>
+                ) : null}
+
+                <div className="mobile-wizard-actions">
+                  <Button
+                    className="mobile-outline-button"
+                    radius="xl"
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (plannerStep === 1) {
+                        setPlanningView('list');
+                        return;
+                      }
+                      setPlannerStep((current) => current - 1);
+                    }}
+                  >
+                    {plannerStep === 1 ? 'Cancelar' : 'Voltar'}
+                  </Button>
+                  {plannerStep < 4 ? (
+                    <Button
+                      className="mobile-gradient-button"
+                      radius="xl"
+                      type="button"
+                      onClick={() => setPlannerStep((current) => current + 1)}
+                    >
+                      Continuar
+                    </Button>
+                  ) : (
+                    <Button
+                      className="mobile-gradient-button"
+                      loading={createParty.isPending}
+                      radius="xl"
+                      type="submit"
+                    >
+                      {createParty.isPending ? 'Criando...' : 'Criar evento'}
+                    </Button>
+                  )}
+                </div>
+              </form>
+            ) : (
+              <>
+                {featuredParty ? (
+                  <article className="mobile-featured-event compact">
+                    <div className="mobile-featured-event__top">
+                      <Badge className="mobile-featured-badge" radius="xl" size="sm">
+                        Evento em destaque
+                      </Badge>
+                      <span className="mobile-featured-event__category">{featuredParty.category}</span>
+                    </div>
+                    <div className="mobile-featured-event__body">
+                      <h2>{featuredParty.name}</h2>
+                      <p>{formatPartyDateLabel(featuredParty.date)}</p>
+                      <small>
+                        {featuredParty.time} | {featuredParty.location.split('|')[0]?.trim() || featuredParty.location}
+                      </small>
+                    </div>
+                    <img
+                      alt={featuredParty.category}
+                      className="mobile-featured-event__art"
+                      src={getPartyArtwork(featuredParty.category)}
+                    />
+                  </article>
+                ) : null}
+
+                <div className="mobile-event-mini-grid single-column">
+                  {parties.map((party) => (
+                    <article key={party.id} className="mobile-event-list-card">
+                      <img
+                        alt={party.category}
+                        className="mobile-event-list-card__thumb media"
+                        src={getPartyArtwork(party.category)}
+                      />
+                      <div className="mobile-event-list-card__body">
+                        <strong>{party.name}</strong>
+                        <span>{formatPartyDateLabel(party.date)}</span>
+                        <small>{party.time} | {party.location.split('|')[0]?.trim() || party.location}</small>
+                      </div>
+                      <button
+                        className="mobile-inline-link"
+                        type="button"
+                        onClick={() => {
+                          setSelectedPartyId(party.id);
+                          setPlanningPartyId(party.id);
+                          setPlanningView('detail');
+                          setActiveSection('Tarefas');
+                        }}
+                      >
+                        Ver
+                      </button>
+                    </article>
+                  ))}
+                </div>
+
+                <button className="mobile-gradient-button" type="button" onClick={handleQuickCreateParty}>
+                  <Plus size={18} />
+                  <span>Criar evento</span>
+                </button>
+              </>
+            )}
+          </section>
+        ) : null}
+
+        {activeSection === 'Convidados' && isMobile ? (
+          <section className="mobile-page-shell">
+            <Paper className="mobile-gradient-summary" p="lg" radius="xl" shadow="sm">
+              <Group gap="sm" mb="md">
+                <ThemeIcon color="grape" radius="xl" size="lg" variant="white">
+                  <Users size={18} />
+                </ThemeIcon>
+                <Text fw={700}>Resumo dos convidados</Text>
+              </Group>
+
+              <SimpleGrid cols={3} spacing="sm">
+                <Stack align="center" gap={2}>
+                  <Text c="white" fw={800} size="2rem">
+                    {mobileGuests.filter((guest) => guest.status === 'Confirmado').length}
+                  </Text>
+                  <Text c="rgba(255,255,255,0.88)" size="sm">Confirmados</Text>
+                </Stack>
+                <Stack align="center" gap={2}>
+                  <Text c="white" fw={800} size="2rem">
+                    {mobileGuests.filter((guest) => guest.status === 'Pendente').length}
+                  </Text>
+                  <Text c="rgba(255,255,255,0.88)" size="sm">Pendentes</Text>
+                </Stack>
+                <Stack align="center" gap={2}>
+                  <Text c="white" fw={800} size="2rem">
+                    {mobileGuests.filter((guest) => guest.status === 'Recusou').length}
+                  </Text>
+                  <Text c="rgba(255,255,255,0.88)" size="sm">Recusados</Text>
+                </Stack>
+              </SimpleGrid>
+            </Paper>
+
+            <SegmentedControl
+              fullWidth
+              data={[
+                { label: 'Todos', value: 'Todos' },
+                { label: 'Confirmados', value: 'Confirmado' },
+                { label: 'Pendentes', value: 'Pendente' },
+                { label: 'Recusados', value: 'Recusou' }
+              ]}
+              radius="xl"
+              styles={mobileSegmentedStyles}
+              value={guestFilter}
+              onChange={(value) => setGuestFilter(value as GuestFilter)}
+            />
+
+            <Group align="stretch" wrap="nowrap">
+              <TextInput
+                aria-label="Buscar convidados"
+                classNames={plannerFieldClassNames}
+                leftSection={<Search size={18} />}
+                placeholder="Buscar convidados"
+                radius="xl"
+                style={{ flex: 1 }}
+                size="md"
+                styles={plannerFieldStyles}
+                value={guestSearch}
+                onChange={(event) => setGuestSearch(event.target.value)}
+              />
+              <Button
+                leftSection={<SlidersHorizontal size={18} />}
+                radius="xl"
+                styles={{
+                  root: {
+                    alignSelf: 'stretch',
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    boxShadow: 'var(--shadow)',
+                    color: 'var(--text)'
+                  }
+                }}
+                variant="default"
+                onClick={() => {
+                  setGuestFilter('Todos');
+                  setGuestSearch('');
+                }}
+              >
+                {hasGuestFilters ? 'Limpar' : guestFilter}
+              </Button>
+            </Group>
+
+            <div className="mobile-list-stack">
+              {filteredMobileGuests.length > 0 ? (
+                filteredMobileGuests.map((guest, index) => (
+                  <Paper key={guest.id} className="mobile-guest-card" p="md" radius="xl" style={mobileSurfaceStyles}>
+                    <Avatar
+                      className={`mobile-guest-avatar tone-${(index % 5) + 1}`}
+                      color="grape"
+                      radius="xl"
+                      size={46}
+                    >
+                      {getInitials(guest.name)}
+                    </Avatar>
+                    <div className="mobile-guest-card__body">
+                      <Text fw={700}>{guest.name}</Text>
+                      <span className={`mobile-status-pill status-${guest.status.toLowerCase()}`}>
+                        {guest.status}
+                      </span>
+                    </div>
+                    <Group className="mobile-guest-card__actions" gap="xs">
+                      <ActionIcon radius="xl" size="md" variant="subtle"><Phone size={16} /></ActionIcon>
+                      <ActionIcon radius="xl" size="md" variant="subtle"><Mail size={16} /></ActionIcon>
+                      <ActionIcon radius="xl" size="md" variant="subtle"><ChevronRight size={18} /></ActionIcon>
+                    </Group>
+                  </Paper>
+                ))
+              ) : (
+                <Paper className="mobile-empty-card compact" p="lg" radius="xl" style={mobileSurfaceStyles}>
+                  <Text c="dimmed">Nenhum convidado encontrado para esse filtro.</Text>
+                </Paper>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {activeSection === 'Notificacoes' && isMobile ? (
+          <section className="mobile-page-shell">
+            <SegmentedControl
+              fullWidth
+              data={[
+                { label: 'Todas', value: 'Todas' },
+                { label: 'Nao lidas', value: 'Nao lidas' },
+                { label: 'Lembretes', value: 'Lembretes' },
+                { label: 'Atualizacoes', value: 'Atualizacoes' }
+              ]}
+              radius="xl"
+              styles={mobileSegmentedStyles}
+              value={notificationFilter}
+              onChange={(value) => setNotificationFilter(value as NotificationFilter)}
+            />
+
+            <Button
+              className="mobile-mark-read"
+              leftSection={<CheckCheck size={16} />}
+              radius="xl"
+              variant="subtle"
+              onClick={() => void markAllAsRead.mutateAsync()}
+            >
+              Marcar todas como lidas
+            </Button>
+
+            <div className="mobile-list-stack">
+              {filteredNotifications.length > 0 ? (
+                filteredNotifications.map((notification, index) => (
+                  <Paper key={notification.id} className="mobile-notification-card" p="md" radius="xl" style={mobileSurfaceStyles}>
+                    <span className={`mobile-notification-dot tone-${(index % 5) + 1}`} />
+                    <ThemeIcon className="mobile-notification-card__icon" radius="xl" size={44} variant="light">
+                      <Bell size={18} />
+                    </ThemeIcon>
+                    <div className="mobile-notification-card__copy">
+                      <Text fw={700}>{notification.title}</Text>
+                      <Text c="dimmed" size="sm">{notification.message}</Text>
+                      <Text c="dimmed" size="xs">{formatDateTime(notification.createdAtUtc)}</Text>
+                    </div>
+                    <ChevronRight size={18} />
+                  </Paper>
+                ))
+              ) : (
+                <Paper className="mobile-empty-card compact" p="lg" radius="xl" style={mobileSurfaceStyles}>
+                  <Text c="dimmed">Nenhuma notificacao encontrada nesse filtro.</Text>
+                </Paper>
+              )}
+            </div>
+
+            <Button
+              className="mobile-outline-button"
+              disabled={notifications.length === 0 || clearAllNotifications.isPending}
+              radius="xl"
+              variant="outline"
+              onClick={() => void handleClearNotifications()}
+            >
+              {clearAllNotifications.isPending ? 'Limpando...' : 'Limpar notificacoes'}
+            </Button>
+          </section>
+        ) : null}
+
+        {activeSection === 'Tarefas' && isMobile ? (
+          <section className="mobile-page-shell">
+            <article className="mobile-surface-card">
+              <div className="mobile-surface-card__header">
+                <strong>Lista de tarefas</strong>
+                <button className="mobile-inline-link" type="button">Visao geral</button>
+              </div>
+
+              <div className="mobile-task-list detailed">
+                {mobileTasks.length > 0 ? (
+                  mobileTasks.map((task) => (
+                    <div key={task.id} className="mobile-task-row">
+                      <button
+                        className={task.done ? 'mobile-task-check is-done' : 'mobile-task-check'}
+                        type="button"
+                        onClick={() =>
+                          mobileParty
+                            ? void toggleTask.mutateAsync({ partyId: mobileParty.id, taskId: task.id })
+                            : undefined
+                        }
+                      >
+                        {task.done ? <CheckCheck size={14} /> : null}
+                      </button>
+                      <div className="mobile-task-row__copy">
+                        <strong>{task.title}</strong>
+                        <small>{mobileParty?.date || 'Sem data definida'}</small>
+                      </div>
+                      <span className={task.done ? 'mobile-tag success' : 'mobile-tag pending'}>
+                        {task.done ? 'Concluida' : 'Pendente'}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="empty-copy">Nenhuma tarefa cadastrada.</p>
+                )}
+              </div>
+
+              <button className="mobile-gradient-button" type="button" onClick={() => handleSectionChange('Planejar')}>
+                <Plus size={18} />
+                <span>Nova tarefa</span>
+              </button>
+            </article>
+
+            <article className="mobile-surface-card">
+              <div className="mobile-surface-card__header">
+                <strong>Resumo do orcamento</strong>
+                <button className="mobile-inline-link" type="button">Visao geral</button>
+              </div>
+
+              <div className="mobile-budget-summary">
+                <div>
+                  <span>Orcamento total</span>
+                  <strong>{currencyFormatter.format(mobileParty?.budget.estimated ?? 0)}</strong>
+                </div>
+                <div>
+                  <span>Gasto ate agora</span>
+                  <strong>{currencyFormatter.format(mobileParty?.budget.spent ?? 0)}</strong>
+                </div>
+                <div>
+                  <span>Valor restante</span>
+                  <strong>
+                    {currencyFormatter.format(
+                      Math.max((mobileParty?.budget.estimated ?? 0) - (mobileParty?.budget.spent ?? 0), 0)
+                    )}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="mobile-budget-progress">
+                <div
+                  className="mobile-budget-progress__fill"
+                  style={{
+                    width: `${mobileParty && mobileParty.budget.estimated > 0
+                      ? Math.min((mobileParty.budget.spent / mobileParty.budget.estimated) * 100, 100)
+                      : 0}%`
+                  }}
+                />
+              </div>
+
+              <div className="mobile-budget-category-list">
+                {mobileBudgetItems.slice(0, 4).map((item) => (
+                  <div key={item.id} className="mobile-budget-category-item">
+                    <div>
+                      <strong>{item.category}</strong>
+                      <small>{item.label}</small>
+                    </div>
+                    <span>{currencyFormatter.format(item.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </section>
+        ) : null}
+
+        {activeSection === 'Perfil' && isMobile ? (
+          <section className="mobile-page-shell">
+            <article className="mobile-profile-hero">
+              <div className="mobile-profile-avatar">{getInitials(session.user.name)}</div>
+              <div className="mobile-profile-copy">
+                <strong>{session.user.name}</strong>
+                <span>Organizador de eventos</span>
+                <small>{session.user.email}</small>
+              </div>
+            </article>
+
+            <div className="mobile-profile-stats">
+              <article className="mobile-profile-stat-card">
+                <Calendar size={18} />
+                <strong>{parties.length}</strong>
+                <span>Eventos criados</span>
+              </article>
+              <article className="mobile-profile-stat-card">
+                <Users size={18} />
+                <strong>{parties.reduce((count, party) => count + party.guests.length, 0)}</strong>
+                <span>Convidados</span>
+              </article>
+              <article className="mobile-profile-stat-card">
+                <CheckCheck size={18} />
+                <strong>{completedTaskCount}</strong>
+                <span>{totalTaskCount} tarefas</span>
+              </article>
+            </div>
+
+            <div className="mobile-list-stack">
+              {profileCards.map((card) => {
+                const Icon = card.icon;
+                return (
+                  <article key={card.id} className="mobile-settings-card">
+                    <div className="mobile-settings-card__icon">
+                      <Icon size={18} />
+                    </div>
+                    <div className="mobile-settings-card__copy">
+                      <strong>{card.label}</strong>
+                      <span>{card.description}</span>
+                    </div>
+                    <ChevronRight size={18} />
+                  </article>
+                );
+              })}
+            </div>
+
+            <article className="mobile-surface-card">
+              <div className="mobile-surface-card__header">
+                <strong>Meus eventos</strong>
+                <button className="mobile-inline-link" type="button" onClick={() => handleSectionChange('Planejar')}>
+                  Ver todos
+                </button>
+              </div>
+
+              <div className="mobile-event-mini-grid">
+                {parties.slice(0, 2).map((party) => (
+                  <div key={party.id} className="mobile-event-mini-card">
+                    <div className="mobile-event-mini-card__thumb media">
+                      <img alt={party.category} src={getPartyArtwork(party.category)} />
+                    </div>
+                    <div className="mobile-event-mini-card__copy">
+                      <strong>{party.name}</strong>
+                      <span>{formatPartyDateLabel(party.date)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+
+            <button className="mobile-outline-button" type="button" onClick={onLogout}>
+              <LogOut size={18} />
+              <span>Sair da conta</span>
+            </button>
+          </section>
+        ) : null}
+
+        {activeSection === 'Planejar' && !isMobile ? (
           <section className="planner-shell">
             <Paper className="planner-hero-card" p="xl" radius="xl" shadow="sm" withBorder>
               <Group justify="space-between" align="flex-start">
@@ -1527,7 +2598,7 @@ export function PlannerDashboard({
           </section>
         ) : null}
 
-        {activeSection === 'Operacao' ? (
+        {activeSection === 'Operacao' && !isMobile ? (
           <section className="content-grid">
             <article className="card-light">
               <h3>Tarefas</h3>
@@ -1595,7 +2666,7 @@ export function PlannerDashboard({
           </section>
         ) : null}
 
-        {activeSection === 'Ajustes' ? (
+        {activeSection === 'Ajustes' && !isMobile ? (
           <section className="content-grid settings-grid">
             <article className="card-light settings-card">
               <h3>Preferencias</h3>
@@ -1626,6 +2697,55 @@ export function PlannerDashboard({
               </button>
             </article>
           </section>
+        ) : null}
+
+        {isMobile ? (
+          <nav className="mobile-bottom-nav" aria-label="Navegacao principal mobile">
+            <button
+              className={activeSection === 'Painel' ? 'mobile-bottom-nav__item is-active' : 'mobile-bottom-nav__item'}
+              type="button"
+              onClick={() => handleSectionChange('Painel')}
+            >
+              <LayoutDashboard size={18} />
+              <span>Inicio</span>
+            </button>
+
+            <button
+              className={activeSection === 'Planejar' ? 'mobile-bottom-nav__item is-active' : 'mobile-bottom-nav__item'}
+              type="button"
+              onClick={() => handleSectionChange('Planejar')}
+            >
+              <Calendar size={18} />
+              <span>Eventos</span>
+            </button>
+
+            <button
+              className={activeSection === 'Convidados' ? 'mobile-bottom-nav__item is-active' : 'mobile-bottom-nav__item'}
+              type="button"
+              onClick={() => handleSectionChange('Convidados')}
+            >
+              <Users size={18} />
+              <span>Convidados</span>
+            </button>
+
+            <button
+              className={activeSection === 'Tarefas' ? 'mobile-bottom-nav__item is-active' : 'mobile-bottom-nav__item'}
+              type="button"
+              onClick={() => handleSectionChange('Tarefas')}
+            >
+              <CheckCheck size={18} />
+              <span>Tarefas</span>
+            </button>
+
+            <button
+              className={activeSection === 'Perfil' ? 'mobile-bottom-nav__item is-active' : 'mobile-bottom-nav__item'}
+              type="button"
+              onClick={() => handleSectionChange('Perfil')}
+            >
+              <Users size={18} />
+              <span>Perfil</span>
+            </button>
+          </nav>
         ) : null}
       </AppShell.Main>
     </AppShell>

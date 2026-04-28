@@ -8,33 +8,33 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/favicon.svg', 'icons/pwa-maskable.svg'],
+      includeAssets: ['icons/favicon.png', 'icons/logo_pwa.png'],
       manifest: {
-        name: 'Party Planner PWA',
-        short_name: 'Party Planner',
-        description: 'Planejamento de festas com dashboard web conectado ao backend existente.',
-        theme_color: '#16324f',
-        background_color: '#f4ecdf',
+        name: 'Celebra PWA',
+        short_name: 'Celebra',
+        description: 'Planejamento de festas com experiencia mobile e backend conectado.',
+        theme_color: '#0B1220',
+        background_color: '#0B1220',
         display: 'standalone',
         start_url: '/',
         scope: '/',
         icons: [
           {
-            src: '/icons/pwa-192.svg',
+            src: '/icons/logo_pwa.png',
             sizes: '192x192',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/icons/pwa-512.svg',
+            src: '/icons/logo_pwa.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'any'
           },
           {
-            src: '/icons/pwa-maskable.svg',
+            src: '/icons/logo_pwa.png',
             sizes: '512x512',
-            type: 'image/svg+xml',
+            type: 'image/png',
             purpose: 'maskable'
           }
         ]

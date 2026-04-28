@@ -1,7 +1,19 @@
+import {
+  Button,
+  Paper,
+  PasswordInput,
+  SegmentedControl,
+  Stack,
+  Text,
+  TextInput,
+  ThemeIcon,
+  Title
+} from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { BadgeCheck, CakeSlice, ShieldCheck } from 'lucide-react';
+import { ArrowRight, BadgeCheck, CakeSlice } from 'lucide-react';
 import { z } from 'zod';
 
 import type { AuthSession } from '@/domain/entities/auth';
@@ -22,6 +34,7 @@ type AuthPageProps = {
 export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [errorMessage, setErrorMessage] = useState('');
+  const isMobile = useMediaQuery('(max-width: 48em)');
   const schema = useMemo(() => authSchema, []);
 
   const form = useForm<z.infer<typeof authSchema>>({
@@ -62,93 +75,105 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
   }
 
   return (
-    <main className="auth-layout">
-      <section className="auth-hero card-dark">
-        <span className="eyebrow">Party Planner PWA</span>
-        <h1>Central web para orquestrar cada etapa da festa.</h1>
-        <p>
-          O novo app em React conversa com o mesmo backend e organiza autenticacao,
-          planejamento, operacao e preferencias em uma experiencia pronta para instalar.
-        </p>
+    <main className="auth-layout auth-layout-single">
+      <section className="auth-hero card-dark auth-mobile-hero auth-mobile-hero-clean auth-hero-with-form">
+        <div className="auth-logo-wrap">
+          <img alt="Celebra" className="auth-brand-image auth-brand-image-light" src="/brand/celebra-mark-black.png" />
+          <img alt="Celebra" className="auth-brand-image auth-brand-image-dark" src="/brand/celebra-mark-white.png" />
+        </div>
 
-        <div className="feature-grid">
-          <article>
-            <CakeSlice size={20} />
+        <Paper className="auth-form card-light auth-mobile-panel auth-mobile-panel-embedded" p="xl" radius="xl" shadow="sm" withBorder>
+          <Stack gap="lg">
+            <div>
+              <Text className="eyebrow">Acesso rapido</Text>
+              <Title order={isMobile ? 3 : 2}>
+                {mode === 'login' ? 'Entrar na sua conta' : 'Criar conta no Celebra'}
+              </Title>
+              <Text c="dimmed" mt={6} size="sm">
+                {mode === 'login'
+                  ? 'Use seu e-mail e senha para continuar no painel mobile.'
+                  : 'Cadastre-se e ja entre direto no app para criar sua primeira festa.'}
+              </Text>
+            </div>
+
+            <SegmentedControl
+              className="auth-segmented"
+              data={[
+                { label: 'Entrar', value: 'login' },
+                { label: 'Criar conta', value: 'register' }
+              ]}
+              fullWidth
+              radius="xl"
+              value={mode}
+              onChange={(value) => setMode(value as AuthMode)}
+            />
+
+            <form className="auth-form-stack" onSubmit={form.handleSubmit(handleSubmit)}>
+              <Stack gap="md">
+                {mode === 'register' ? (
+                  <TextInput
+                    label="Nome"
+                    placeholder="Seu nome"
+                    radius="xl"
+                    size="md"
+                    {...form.register('name')}
+                    error={form.formState.errors.name?.message}
+                  />
+                ) : null}
+
+                <TextInput
+                  label="E-mail"
+                  placeholder="voce@celebra.app"
+                  radius="xl"
+                  size="md"
+                  type="email"
+                  {...form.register('email')}
+                  error={form.formState.errors.email?.message}
+                />
+
+                <PasswordInput
+                  label="Senha"
+                  placeholder="Sua senha"
+                  radius="xl"
+                  size="md"
+                  {...form.register('password')}
+                  error={form.formState.errors.password?.message}
+                />
+
+                {errorMessage ? <div className="feedback error">{errorMessage}</div> : null}
+
+                <Button
+                  className="auth-submit-button"
+                  fullWidth
+                  loading={form.formState.isSubmitting}
+                  radius="xl"
+                  rightSection={<ArrowRight size={18} />}
+                  size="lg"
+                  type="submit"
+                >
+                  {mode === 'login' ? 'Entrar com senha' : 'Criar conta e entrar'}
+                </Button>
+              </Stack>
+            </form>
+          </Stack>
+        </Paper>
+
+        <div className="feature-grid auth-feature-grid auth-feature-grid-clean">
+          <Paper className="auth-feature-card" p="md" radius="xl" shadow="sm">
+            <ThemeIcon color="blue" radius="xl" size="lg" variant="light">
+              <CakeSlice size={18} />
+            </ThemeIcon>
             <strong>Planejamento vivo</strong>
             <span>Festas, tarefas, convidados e custos na mesma trilha.</span>
-          </article>
-          <article>
-            <ShieldCheck size={20} />
-            <strong>JWT reaproveitado</strong>
-            <span>Mesmo fluxo de login usado hoje pelo backend .NET.</span>
-          </article>
-          <article>
-            <BadgeCheck size={20} />
+          </Paper>
+          <Paper className="auth-feature-card" p="md" radius="xl" shadow="sm">
+            <ThemeIcon color="cyan" radius="xl" size="lg" variant="light">
+              <BadgeCheck size={18} />
+            </ThemeIcon>
             <strong>PWA instalavel</strong>
-            <span>Abra no navegador e instale como app no desktop ou Android.</span>
-          </article>
+            <span>Experiencia pronta para celular com tema e navegacao mobile.</span>
+          </Paper>
         </div>
-      </section>
-
-      <section className="auth-panel">
-        <div className="auth-tabs">
-          <button
-            className={mode === 'login' ? 'is-active' : ''}
-            onClick={() => setMode('login')}
-            type="button"
-          >
-            Entrar
-          </button>
-          <button
-            className={mode === 'register' ? 'is-active' : ''}
-            onClick={() => setMode('register')}
-            type="button"
-          >
-            Criar conta
-          </button>
-        </div>
-
-        <form className="auth-form card-light" onSubmit={form.handleSubmit(handleSubmit)}>
-          {mode === 'register' ? (
-            <label className="field">
-              <span>Nome</span>
-              <input type="text" placeholder="Seu nome" {...form.register('name')} />
-              <small>{form.formState.errors.name?.message}</small>
-            </label>
-          ) : null}
-
-          <label className="field">
-            <span>E-mail</span>
-            <input type="email" placeholder="voce@partyplanner.app" {...form.register('email')} />
-            <small>{form.formState.errors.email?.message}</small>
-          </label>
-
-          <label className="field">
-            <span>Senha</span>
-            <input type="password" placeholder="Sua senha" {...form.register('password')} />
-            <small>{form.formState.errors.password?.message}</small>
-          </label>
-
-          {errorMessage ? <div className="feedback error">{errorMessage}</div> : null}
-
-          <button className="primary-button" type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting
-              ? 'Autenticando...'
-              : mode === 'login'
-                ? 'Entrar com senha'
-                : 'Criar conta e entrar'}
-          </button>
-
-          <div className="feedback neutral">
-            Login Google pode ser adicionado depois no mesmo backend. Neste primeiro passo, mantive
-            o fluxo de usuario e senha consistente entre mobile e web.
-          </div>
-
-          <p className="helper-copy">
-            Conta de teste atual: <strong>demo@partyplanner.app</strong> com senha
-            <strong> Party123!</strong>
-          </p>
-        </form>
       </section>
     </main>
   );

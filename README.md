@@ -1,6 +1,6 @@
-# Party Planner Web
+# Celebra Web
 
-Aplicacao web PWA em React para o ecossistema Party Planner, separada do projeto mobile Android.
+Aplicacao web PWA em React para o ecossistema Celebra, separada do projeto mobile Android.
 
 ## Stack
 

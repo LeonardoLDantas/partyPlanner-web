@@ -12,3 +12,4 @@ export const environment = {
     configuredUrl ?? (import.meta.env.DEV ? localhostFallback : productionFallback)
   )
 };
+ 
