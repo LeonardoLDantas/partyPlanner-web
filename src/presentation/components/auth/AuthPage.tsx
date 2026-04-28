@@ -78,8 +78,8 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
     <main className="auth-layout auth-layout-single">
       <section className="auth-hero card-dark auth-mobile-hero auth-mobile-hero-clean auth-hero-with-form">
         <div className="auth-logo-wrap">
-          <img alt="celebra" className="auth-brand-image auth-brand-image-light" src="/brand/celebra-mark-black.png" />
-          <img alt="celebra" className="auth-brand-image auth-brand-image-dark" src="/brand/celebra-mark-white.png" />
+          <img alt="Celebra" className="auth-brand-image auth-brand-image-light" src="/brand/celebra-mark-black.png" />
+          <img alt="Celebra" className="auth-brand-image auth-brand-image-dark" src="/brand/celebra-mark-white.png" />
         </div>
 
         <Paper className="auth-form card-light auth-mobile-panel auth-mobile-panel-embedded" p="xl" radius="xl" shadow="sm" withBorder>
@@ -87,7 +87,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
             <div>
               <Text className="eyebrow">Acesso rapido</Text>
               <Title order={isMobile ? 3 : 2}>
-                {mode === 'login' ? 'Entrar na sua conta' : 'Criar conta no celebra'}
+                {mode === 'login' ? 'Entrar na sua conta' : 'Criar conta no Celebra'}
               </Title>
               <Text c="dimmed" mt={6} size="sm">
                 {mode === 'login'

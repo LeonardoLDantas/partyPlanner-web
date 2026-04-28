@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/favicon.png', 'icons/logo_pwa.png'],
       manifest: {
-        name: 'celebra PWA',
-        short_name: 'celebra',
+        name: 'Celebra PWA',
+        short_name: 'Celebra',
         description: 'Planejamento de festas com experiencia mobile e backend conectado.',
         theme_color: '#0B1220',
         background_color: '#0B1220',

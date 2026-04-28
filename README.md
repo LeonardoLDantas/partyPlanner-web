@@ -1,6 +1,6 @@
-# celebra Web
+# Celebra Web
 
-Aplicacao web PWA em React para o ecossistema celebra, separada do projeto mobile Android.
+Aplicacao web PWA em React para o ecossistema Celebra, separada do projeto mobile Android.
 
 ## Stack
 

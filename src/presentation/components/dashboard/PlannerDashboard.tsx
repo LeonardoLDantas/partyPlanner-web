@@ -951,8 +951,8 @@ export function PlannerDashboard({
         <header className="app-header">
           <Group className="app-header-row" justify="space-between" wrap="nowrap">
             <div className="app-header-brand">
-              <img alt="celebra" className="app-header-brand__logo app-header-brand__logo-light" src="/brand/celebra-mark-black.png" />
-              <img alt="celebra" className="app-header-brand__logo app-header-brand__logo-dark" src="/brand/celebra-mark-white.png" />
+              <img alt="Celebra" className="app-header-brand__logo app-header-brand__logo-light" src="/brand/celebra-mark-black.png" />
+              <img alt="Celebra" className="app-header-brand__logo app-header-brand__logo-dark" src="/brand/celebra-mark-white.png" />
               <span className="eyebrow">
                 {isMobile ? 'PWA mobile-first' : 'Mesmo backend, nova experiencia'}
               </span>
