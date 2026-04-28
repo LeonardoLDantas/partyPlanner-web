@@ -4,6 +4,8 @@ export type Task = {
   id: string;
   title: string;
   assignee: string;
+  dueDate: string;
+  status: string;
   done: boolean;
 };
 
@@ -27,7 +29,9 @@ export type Party = {
   name: string;
   category: string;
   date: string;
+  time: string;
   location: string;
+  expectedGuests: number;
   canEdit: boolean;
   tasks: Task[];
   guests: Guest[];

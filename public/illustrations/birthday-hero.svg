@@ -1,0 +1,40 @@
+<svg width="640" height="420" viewBox="0 0 640 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="640" height="420" rx="40" fill="url(#bg)"/>
+  <circle cx="534" cy="92" r="46" fill="#F7A6D7" fill-opacity=".78"/>
+  <circle cx="588" cy="150" r="26" fill="#F4C0EA" fill-opacity=".64"/>
+  <circle cx="548" cy="184" r="34" fill="#B495FF" fill-opacity=".55"/>
+  <g opacity=".88">
+    <path d="M388 290C388 250.235 420.235 218 460 218H478C517.765 218 550 250.235 550 290V316H388V290Z" fill="#FFE8F3"/>
+    <rect x="364" y="304" width="210" height="22" rx="11" fill="#F8D8EA"/>
+    <rect x="404" y="190" width="130" height="54" rx="27" fill="#FF9DCD"/>
+    <rect x="396" y="228" width="146" height="40" rx="20" fill="#FF84BF"/>
+    <circle cx="422" cy="213" r="5" fill="#FFEBF7"/>
+    <circle cx="452" cy="205" r="5" fill="#FFEBF7"/>
+    <circle cx="482" cy="214" r="5" fill="#FFEBF7"/>
+    <circle cx="510" cy="206" r="5" fill="#FFEBF7"/>
+  </g>
+  <g>
+    <rect x="418" y="152" width="10" height="38" rx="5" fill="#F7E7FF"/>
+    <rect x="446" y="144" width="10" height="46" rx="5" fill="#F7E7FF"/>
+    <rect x="474" y="148" width="10" height="42" rx="5" fill="#F7E7FF"/>
+    <rect x="502" y="142" width="10" height="48" rx="5" fill="#F7E7FF"/>
+    <path d="M423 138C423 132.477 427.477 128 433 128C433 133.523 428.523 138 423 138Z" fill="#FFD36D"/>
+    <path d="M451 130C451 124.477 455.477 120 461 120C461 125.523 456.523 130 451 130Z" fill="#FFD36D"/>
+    <path d="M479 134C479 128.477 483.477 124 489 124C489 129.523 484.523 134 479 134Z" fill="#FFD36D"/>
+    <path d="M507 128C507 122.477 511.477 118 517 118C517 123.523 512.523 128 507 128Z" fill="#FFD36D"/>
+  </g>
+  <g opacity=".8">
+    <circle cx="128" cy="120" r="6" fill="#FFD36D"/>
+    <circle cx="168" cy="166" r="5" fill="#F7A6D7"/>
+    <circle cx="220" cy="142" r="5" fill="#B495FF"/>
+    <circle cx="264" cy="198" r="6" fill="#FFD36D"/>
+    <circle cx="318" cy="120" r="5" fill="#F7A6D7"/>
+  </g>
+  <defs>
+    <linearGradient id="bg" x1="40" y1="40" x2="600" y2="380" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4B27FF"/>
+      <stop offset=".5" stop-color="#7E2CE2"/>
+      <stop offset="1" stop-color="#FF4BA0"/>
+    </linearGradient>
+  </defs>
+</svg>

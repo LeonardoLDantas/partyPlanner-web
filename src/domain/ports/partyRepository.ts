@@ -4,7 +4,9 @@ export type CreatePartyInput = {
   name: string;
   category: string;
   date: string;
+  time?: string;
   location: string;
+  expectedGuests?: number;
   estimatedBudget: number;
 };
 
@@ -13,6 +15,8 @@ export type UpdatePartyInput = CreatePartyInput;
 export type CreateTaskInput = {
   title: string;
   assignee: string;
+  dueDate?: string;
+  status?: string;
 };
 
 export type CreateGuestInput = {
