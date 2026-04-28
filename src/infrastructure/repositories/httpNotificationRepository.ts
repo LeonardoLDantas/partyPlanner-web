@@ -14,4 +14,10 @@ export class HttpNotificationRepository implements NotificationRepository {
       method: 'PATCH'
     });
   }
+
+  clearAll() {
+    return this.httpClient.request<{ deleted: number }>('/api/notifications', {
+      method: 'DELETE'
+    });
+  }
 }

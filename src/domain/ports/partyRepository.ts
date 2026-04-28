@@ -8,6 +8,8 @@ export type CreatePartyInput = {
   estimatedBudget: number;
 };
 
+export type UpdatePartyInput = CreatePartyInput;
+
 export type CreateTaskInput = {
   title: string;
   assignee: string;
@@ -28,6 +30,7 @@ export type CreateBudgetItemInput = {
 export interface PartyRepository {
   getParties(): Promise<Party[]>;
   createParty(input: CreatePartyInput): Promise<Party>;
+  updateParty(partyId: string, input: UpdatePartyInput): Promise<Party>;
   createTask(partyId: string, input: CreateTaskInput): Promise<Party>;
   createGuest(partyId: string, input: CreateGuestInput): Promise<Party>;
   createBudgetItem(partyId: string, input: CreateBudgetItemInput): Promise<Party>;

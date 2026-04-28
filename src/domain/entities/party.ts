@@ -23,10 +23,12 @@ export type BudgetItem = {
 
 export type Party = {
   id: string;
+  ownerUserId: string;
   name: string;
   category: string;
   date: string;
   location: string;
+  canEdit: boolean;
   tasks: Task[];
   guests: Guest[];
   budget: {
