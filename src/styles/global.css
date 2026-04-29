@@ -295,15 +295,13 @@ button {
 .auth-logo-wrap {
   display: grid;
   justify-items: center;
-  margin-bottom: 0.15rem;
 }
 
 .auth-brand-image {
-  width: min(100%, 25rem);
+  width: min(100%, 16rem);
   height: auto;
   display: block;
   border-radius: 18px;
-  padding: 0.85rem 1rem;
 }
 
 .auth-brand-image-dark,
@@ -1981,8 +1979,44 @@ input {
   gap: 0.45rem;
 }
 
+.app-header-mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
 .app-header-brand__logo {
-  width: min(100%, 20rem);
+  width: min(100%, 4rem);
+  height: auto;
+  display: block;
+  border-radius: 999px;
+}
+
+.app-header-brand__name {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--secondary);
+  white-space: nowrap;
+}
+
+.app-header-avatar {
+  border: 2px solid rgba(124, 58, 237, 0.42);
+  box-shadow: var(--shadow);
+}
+
+.app-header-avatar-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-actions-mobile {
+  margin-left: auto;
 }
 
 .hero-panel {
@@ -2828,11 +2862,6 @@ input {
     font-size: 0.82rem;
   }
 
-  .auth-brand-image {
-    width: min(100%, 14rem);
-    padding: 0.65rem 0.8rem;
-  }
-
   .dashboard-main {
     gap: 1rem;
     padding-bottom: 7rem;
@@ -2841,6 +2870,8 @@ input {
   .app-header-row {
     padding: 0.9rem;
     border-radius: 26px;
+    flex-direction: row;
+    align-items: center;
   }
 
   .app-navbar {
@@ -2855,6 +2886,21 @@ input {
     width: 100%;
     justify-content: space-between;
     flex-wrap: wrap;
+  }
+
+  .topbar-actions-mobile {
+    width: auto;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    gap: 0.6rem;
+  }
+
+  .app-header-mobile-brand .app-header-brand__logo {
+    width: 2.55rem;
+  }
+
+  .app-header-brand__name {
+    font-size: 1.4rem;
   }
 
   .app-header-title {

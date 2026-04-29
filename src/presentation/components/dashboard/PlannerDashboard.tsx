@@ -192,10 +192,6 @@ function createPartyFormFromParty(
   };
 }
 
-function getFirstName(fullName: string) {
-  return fullName.trim().split(/\s+/)[0] ?? fullName;
-}
-
 function getInitials(name: string) {
   return name
     .trim()
@@ -273,28 +269,6 @@ function getPartyArtwork(category: string) {
       return '/illustrations/graduation-hero.svg';
     default:
       return '/illustrations/birthday-hero.svg';
-  }
-}
-
-function getSectionTitle(section: Section) {
-  switch (section) {
-    case 'Painel':
-      return 'Inicio';
-    case 'Planejar':
-      return 'Eventos';
-    case 'Convidados':
-      return 'Convidados';
-    case 'Tarefas':
-      return 'Tarefas';
-    case 'Perfil':
-    case 'Ajustes':
-      return 'Perfil';
-    case 'Notificacoes':
-      return 'Notificacoes';
-    case 'Operacao':
-      return 'Operacao';
-    default:
-      return section;
   }
 }
 
@@ -600,7 +574,6 @@ export function PlannerDashboard({
       icon: Bell
     }
   ] as const;
-  const firstName = getFirstName(session.user.name);
   const countdown = featuredParty ? getCountdownParts(featuredParty.date, featuredParty.time) : null;
 
   async function handleCreateParty(event: React.FormEvent<HTMLFormElement>) {
@@ -950,56 +923,94 @@ export function PlannerDashboard({
       <AppShell.Main className="dashboard-main">
         <header className="app-header">
           <Group className="app-header-row" justify="space-between" wrap="nowrap">
-            <div className="app-header-brand">
-              <img alt="Celebra" className="app-header-brand__logo app-header-brand__logo-light" src="/brand/celebra-mark-black.png" />
-              <img alt="Celebra" className="app-header-brand__logo app-header-brand__logo-dark" src="/brand/celebra-mark-white.png" />
-              <span className="eyebrow">
-                {isMobile ? 'PWA mobile-first' : 'Mesmo backend, nova experiencia'}
-              </span>
-              <h1 className="app-header-title">
-                {isMobile ? getSectionTitle(activeSection) : activeSection}
-              </h1>
-              <p className="app-header-copy">
-                {isMobile
-                  ? `Oi, ${firstName}. Vamos planejar algo incrivel hoje.`
-                  : `${session.user.name} | ${session.user.email}`}
-              </p>
-            </div>
+            {isMobile ? (
+              <>
+                <Group>
+                  <img alt="Celebra" className="app-header-brand__logo" src="/icons/logo_pwa_circle.png" />
+                  <span className="app-header-brand__name">Celebra</span>
+                </Group>
 
-            <Group className="topbar-actions" gap="sm" wrap="nowrap">
-              {isMobile ? null : (
-                <div className="install-callout">
-                  <span>PWA pronta para instalar</span>
-                  <small>Abra no Chrome ou Edge e use "Instalar aplicativo".</small>
+                <Group className="topbar-actions topbar-actions-mobile" gap="sm" wrap="nowrap">
+                  <ActionIcon
+                    aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+                    className="app-action"
+                    onClick={() => void onThemeChange(theme === 'dark' ? 'light' : 'dark')}
+                    radius="xl"
+                    size="xl"
+                    variant="default"
+                  >
+                    {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                  </ActionIcon>
+
+                  <ActionIcon
+                    aria-label="Abrir notificacoes"
+                    className="app-action notification-trigger"
+                    onClick={handleOpenNotifications}
+                    ref={notificationsButtonRef}
+                    radius="xl"
+                    size="xl"
+                    variant="default"
+                  >
+                    <Bell size={18} />
+                    {unreadNotifications > 0 ? (
+                      <span className="badge">{Math.min(unreadNotifications, 9)}</span>
+                    ) : null}
+                  </ActionIcon>
+
+                  <button
+                    aria-label="Abrir perfil"
+                    className="app-header-avatar-button"
+                    onClick={() => handleSectionChange('Perfil')}
+                    type="button"
+                  >
+                    <Avatar className="app-header-avatar" color="grape" radius="xl" size={42}>
+                      {getInitials(session.user.name)}
+                    </Avatar>
+                  </button>
+                </Group>
+              </>
+            ) : (
+              <>
+                <div className="app-header-brand">
+                  <span className="eyebrow">Mesmo backend, nova experiencia</span>
+                  <h1 className="app-header-title">{activeSection}</h1>
+                  <p className="app-header-copy">{`${session.user.name} | ${session.user.email}`}</p>
                 </div>
-              )}
 
-              <ActionIcon
-                aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
-                className="app-action"
-                onClick={() => void onThemeChange(theme === 'dark' ? 'light' : 'dark')}
-                radius="xl"
-                size="xl"
-                variant="default"
-              >
-                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-              </ActionIcon>
+                <Group className="topbar-actions" gap="sm" wrap="nowrap">
+                  <div className="install-callout">
+                    <span>PWA pronta para instalar</span>
+                    <small>Abra no Chrome ou Edge e use "Instalar aplicativo".</small>
+                  </div>
 
-          <ActionIcon
-            aria-label="Abrir notificacoes"
-            className="app-action notification-trigger"
-            onClick={handleOpenNotifications}
-            ref={notificationsButtonRef}
-            radius="xl"
-            size="xl"
-            variant="default"
-              >
-                <Bell size={18} />
-                {unreadNotifications > 0 ? (
-                  <span className="badge">{Math.min(unreadNotifications, 9)}</span>
-                ) : null}
-              </ActionIcon>
-            </Group>
+                  <ActionIcon
+                    aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+                    className="app-action"
+                    onClick={() => void onThemeChange(theme === 'dark' ? 'light' : 'dark')}
+                    radius="xl"
+                    size="xl"
+                    variant="default"
+                  >
+                    {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                  </ActionIcon>
+
+                  <ActionIcon
+                    aria-label="Abrir notificacoes"
+                    className="app-action notification-trigger"
+                    onClick={handleOpenNotifications}
+                    ref={notificationsButtonRef}
+                    radius="xl"
+                    size="xl"
+                    variant="default"
+                  >
+                    <Bell size={18} />
+                    {unreadNotifications > 0 ? (
+                      <span className="badge">{Math.min(unreadNotifications, 9)}</span>
+                    ) : null}
+                  </ActionIcon>
+                </Group>
+              </>
+            )}
           </Group>
         </header>
 
@@ -1948,7 +1959,6 @@ export function PlannerDashboard({
               <div className="mobile-profile-avatar">{getInitials(session.user.name)}</div>
               <div className="mobile-profile-copy">
                 <strong>{session.user.name}</strong>
-                <span>Organizador de eventos</span>
                 <small>{session.user.email}</small>
               </div>
             </article>
