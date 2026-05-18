@@ -56,4 +56,15 @@ export class HttpPartyRepository implements PartyRepository {
       method: 'PATCH'
     });
   }
+
+  getInvitation(token: string) {
+    return this.httpClient.request<import('@/domain/entities/party').Invitation>(`/api/invitations/${token}`);
+  }
+
+  respondInvitation(token: string, status: 'Confirmado' | 'Recusou') {
+    return this.httpClient.request<import('@/domain/entities/party').Invitation>(`/api/invitations/${token}/respond`, {
+      method: 'POST',
+      body: JSON.stringify({ status })
+    });
+  }
 }

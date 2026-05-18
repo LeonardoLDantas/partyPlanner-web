@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import type { GuestStatus, Party } from '@/domain/entities/party';
+import type { Party } from '@/domain/entities/party';
 import type {
   CreateBudgetItemInput,
   CreatePartyInput,
@@ -88,11 +88,12 @@ export function useDashboardData(enabled: boolean) {
   });
 
   const createGuest = useMutation({
-    mutationFn: async (variables: { partyId: string; name: string; group: string; status: GuestStatus }) =>
+    mutationFn: async (variables: { partyId: string; name: string; group: string; email?: string; phoneNumber?: string }) =>
       container.partyRepository.createGuest(variables.partyId, {
         name: variables.name,
         group: variables.group,
-        status: variables.status
+        email: variables.email,
+        phoneNumber: variables.phoneNumber
       }),
     onSuccess: (updatedParty) => {
       queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>

@@ -8,7 +8,7 @@ export function useAppBootstrap() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     informationalEnabled: true,
-    theme: 'light'
+    theme: 'dark'
   });
   const [isBootstrapping, setIsBootstrapping] = useState(true);
 

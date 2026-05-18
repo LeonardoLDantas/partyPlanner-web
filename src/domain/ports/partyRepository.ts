@@ -1,4 +1,4 @@
-import type { Party, GuestStatus } from '@/domain/entities/party';
+import type { Invitation, Party } from '@/domain/entities/party';
 
 export type CreatePartyInput = {
   name: string;
@@ -6,8 +6,9 @@ export type CreatePartyInput = {
   date: string;
   time?: string;
   location: string;
+  coverImageUrl?: string;
   expectedGuests?: number;
-  estimatedBudget: number;
+  estimatedBudget: number | null;
 };
 
 export type UpdatePartyInput = CreatePartyInput;
@@ -22,7 +23,8 @@ export type CreateTaskInput = {
 export type CreateGuestInput = {
   name: string;
   group: string;
-  status: GuestStatus;
+  email?: string;
+  phoneNumber?: string;
 };
 
 export type CreateBudgetItemInput = {
@@ -39,4 +41,6 @@ export interface PartyRepository {
   createGuest(partyId: string, input: CreateGuestInput): Promise<Party>;
   createBudgetItem(partyId: string, input: CreateBudgetItemInput): Promise<Party>;
   toggleTask(partyId: string, taskId: string): Promise<Party>;
+  getInvitation(token: string): Promise<Invitation>;
+  respondInvitation(token: string, status: 'Confirmado' | 'Recusou'): Promise<Invitation>;
 }
