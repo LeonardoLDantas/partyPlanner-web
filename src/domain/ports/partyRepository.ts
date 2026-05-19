@@ -48,7 +48,9 @@ export interface PartyRepository {
   updateParty(partyId: string, input: UpdatePartyInput): Promise<Party>;
   createTask(partyId: string, input: CreateTaskInput): Promise<Party>;
   updateTask(partyId: string, taskId: string, input: UpdateTaskInput): Promise<Party>;
+  deleteTask(partyId: string, taskId: string): Promise<Party>;
   createGuest(partyId: string, input: CreateGuestInput): Promise<Party>;
+  deleteGuest(partyId: string, guestId: string): Promise<Party>;
   createBudgetItem(partyId: string, input: CreateBudgetItemInput): Promise<Party>;
   updateBudgetItem(partyId: string, budgetItemId: string, input: CreateBudgetItemInput): Promise<Party>;
   deleteBudgetItem(partyId: string, budgetItemId: string): Promise<Party>;
