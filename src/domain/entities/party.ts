@@ -5,6 +5,7 @@ export type Task = {
   title: string;
   assignee: string;
   dueDate: string;
+  description: string;
   status: string;
   done: boolean;
 };
@@ -47,6 +48,7 @@ export type Party = {
   location: string;
   coverImageUrl: string;
   expectedGuests: number;
+  isFinalized: boolean;
   canEdit: boolean;
   tasks: Task[];
   guests: Guest[];

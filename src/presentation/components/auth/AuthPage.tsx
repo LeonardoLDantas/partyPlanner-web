@@ -61,7 +61,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       await onAuthenticated(session);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Nao foi possivel autenticar agora.'
+        error instanceof Error ? error.message : 'Não foi possível autenticar agora.'
       );
     }
   }
@@ -99,7 +99,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
                 {
                   icon: BadgeCheck,
                   title: 'Pronto para mobile',
-                  copy: 'Navegacao inferior e gestos visuais suaves.'
+                  copy: 'Navegação inferior e gestos visuais suaves.'
                 }
               ].map((item) => (
                 <div
@@ -119,7 +119,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         <Card className="self-center p-5 md:p-6">
           <div className="mb-6">
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-300">
-              Acesso rapido
+              Acesso rápido
             </p>
             <h2 className="mt-2 text-2xl font-semibold">
               {mode === 'login' ? 'Entrar na sua conta' : 'Criar conta no Celebra'}
@@ -127,7 +127,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
             <p className="mt-2 text-sm leading-6 text-muted-foreground">
               {mode === 'login'
                 ? 'Use seu e-mail e senha para continuar no painel.'
-                : 'Cadastre-se e ja entre direto no app para criar sua primeira festa.'}
+                : 'Cadastre-se e já entre direto no app para criar sua primeira festa.'}
             </p>
           </div>
 

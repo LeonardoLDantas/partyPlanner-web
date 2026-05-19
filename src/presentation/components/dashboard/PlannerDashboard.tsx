@@ -20,11 +20,12 @@ import {
   ArrowUpDown,
   Camera,
   Edit3,
-  MoreHorizontal,
   Sparkles,
   Sun,
+  Trash2,
   UserRound,
-  Users
+  Users,
+  X
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import type * as React from 'react';
@@ -55,15 +56,32 @@ import { cn } from '@/shared/utils/cn';
 import { currencyFormatter } from '@/shared/utils/formatters';
 
 const sections = [
-  { id: 'Painel', label: 'Inicio', icon: Home },
+  { id: 'Painel', label: 'Início', icon: Home },
   { id: 'Eventos', label: 'Eventos', icon: CalendarDays },
   { id: 'Convidados', label: 'Convidados', icon: Users },
   { id: 'Tarefas', label: 'Tarefas', icon: CheckCheck },
+  { id: 'Despesas', label: 'Despesas', icon: CircleDollarSign },
   { id: 'Ajustes', label: 'Perfil', icon: UserRound }
 ] as const;
 
 const partyCategories = ['Todos', 'Aniversario', 'Festa', 'Formatura', 'Casamento', 'Noivado', 'Outros'] as const;
 const guestStatuses: GuestStatus[] = ['Confirmado', 'Pendente', 'Recusou'];
+const taskColumns = [
+  { id: 'Pendente', label: 'Pendente', tone: 'border-fuchsia-400/25 bg-fuchsia-400/10 text-fuchsia-100' },
+  { id: 'Em andamento', label: 'Em andamento', tone: 'border-sky-400/25 bg-sky-400/10 text-sky-100' },
+  { id: 'Concluída', label: 'Concluída', tone: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-100' }
+] as const;
+const expenseCategories = [
+  { value: 'Alimentacao', label: 'Alimentação' },
+  { value: 'Decoracao', label: 'Decoração' },
+  { value: 'Local', label: 'Local' },
+  { value: 'Musica', label: 'Música' },
+  { value: 'FotoVideo', label: 'Foto e vídeo' },
+  { value: 'Lembrancas', label: 'Lembranças' },
+  { value: 'Transporte', label: 'Transporte' },
+  { value: 'Equipe', label: 'Equipe' },
+  { value: 'Outros', label: 'Outros' }
+] as const;
 
 function WhatsappIcon({ className, size = 16 }: { className?: string; size?: number }) {
   return (
@@ -82,6 +100,7 @@ function WhatsappIcon({ className, size = 16 }: { className?: string; size?: num
 
 type Section = (typeof sections)[number]['id'];
 type PartyCategoryFilter = (typeof partyCategories)[number];
+type TaskItem = Party['tasks'][number];
 
 type PartyFormState = {
   name: string;
@@ -189,6 +208,10 @@ function getMobileCountdownDays(value: string) {
 }
 
 function isUpcomingParty(party: Party) {
+  if (party.isFinalized) {
+    return false;
+  }
+
   const eventDate = new Date(`${party.date}T${party.time || '00:00'}`);
 
   if (Number.isNaN(eventDate.getTime())) {
@@ -210,6 +233,18 @@ function getPartyProgress(party: Party) {
   return Math.round((party.tasks.filter((task) => task.done).length / party.tasks.length) * 100);
 }
 
+function normalizeTaskStatus(status: string, done: boolean) {
+  if (done || status === 'Concluída' || status === 'Concluida') {
+    return 'Concluída';
+  }
+
+  if (status === 'Em andamento') {
+    return 'Em andamento';
+  }
+
+  return 'Pendente';
+}
+
 function getMapsUrl(location: string) {
   return location.trim()
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`
@@ -224,8 +259,25 @@ function formatCompactCurrency(value: number) {
   }).format(value);
 }
 
+function parseCurrencyInput(value: string) {
+  const digits = value.replace(/\D/g, '');
+  return digits ? Number(digits) / 100 : 0;
+}
+
+function formatCurrencyInput(value: string) {
+  return currencyFormatter.format(parseCurrencyInput(value));
+}
+
+function getExpenseCategoryLabel(value: string) {
+  return expenseCategories.find((category) => category.value === value)?.label ?? value;
+}
+
+function getPartyCategoryLabel(value: string) {
+  return value === 'Aniversario' ? 'Aniversário' : value;
+}
+
 function formatOptionalBudget(value: number | null) {
-  return value === null ? 'Nao definido' : currencyFormatter.format(value);
+  return value === null ? 'Não definido' : currencyFormatter.format(value);
 }
 
 function getPartyCoverImage(party?: Pick<Party, 'coverImageUrl' | 'category'> | null) {
@@ -248,7 +300,7 @@ function readImageAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(new Error('Nao foi possivel ler a imagem.'));
+    reader.onerror = () => reject(new Error('Não foi possível ler a imagem.'));
     reader.readAsDataURL(file);
   });
 }
@@ -282,9 +334,14 @@ export function PlannerDashboard({
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [actionError, setActionError] = useState('');
   const [partyForm, setPartyForm] = useState<PartyFormState>(createEmptyPartyForm);
-  const [taskForm, setTaskForm] = useState({ title: '', assignee: '' });
+  const [taskForm, setTaskForm] = useState({ title: '', assignee: '', description: '' });
+  const [editingTaskId, setEditingTaskId] = useState('');
+  const [editingTaskForm, setEditingTaskForm] = useState({ title: '', assignee: '', description: '' });
   const [guestForm, setGuestForm] = useState({ name: '', group: '', email: '', phoneNumber: '+55 ' });
-  const [budgetForm, setBudgetForm] = useState({ label: '', category: '', amount: '' });
+  const [budgetForm, setBudgetForm] = useState({ label: '', category: 'Outros', amount: '' });
+  const [editingBudgetItemId, setEditingBudgetItemId] = useState('');
+  const [editingBudgetAmount, setEditingBudgetAmount] = useState('');
+  const [draggingTaskId, setDraggingTaskId] = useState('');
   const seenNotificationIdsRef = useRef<Set<string>>(new Set());
   const notificationsInitializedRef = useRef(false);
   const mobileCarouselRef = useRef<HTMLDivElement | null>(null);
@@ -293,10 +350,13 @@ export function PlannerDashboard({
   const {
     dashboardQuery,
     createParty,
+    updateParty,
     createTask,
+    updateTask,
     createGuest,
     createBudgetItem,
-    toggleTask,
+    updateBudgetItem,
+    deleteBudgetItem,
     markAllAsRead,
     clearAllNotifications
   } = useDashboardData(true);
@@ -319,7 +379,7 @@ export function PlannerDashboard({
   );
 
   const featuredParty = useMemo(() => {
-    return [...parties].sort((first, second) => {
+    return [...parties].filter(isUpcomingParty).sort((first, second) => {
       const firstTime = new Date(`${first.date}T${first.time || '00:00'}`).getTime();
       const secondTime = new Date(`${second.date}T${second.time || '00:00'}`).getTime();
       return firstTime - secondTime;
@@ -391,7 +451,9 @@ export function PlannerDashboard({
   function handleMobileCarouselScroll() {
     const carousel = mobileCarouselRef.current;
 
-    if (!carousel || filteredParties.length === 0) {
+    const mobileUpcomingParties = filteredParties.filter(isUpcomingParty);
+
+    if (!carousel || mobileUpcomingParties.length === 0) {
       return;
     }
 
@@ -404,7 +466,7 @@ export function PlannerDashboard({
     const gap = 16;
     const itemWidth = firstCard.offsetWidth + gap;
     const index = Math.round(carousel.scrollLeft / itemWidth);
-    const party = filteredParties[Math.max(0, Math.min(index, filteredParties.length - 1))];
+    const party = mobileUpcomingParties[Math.max(0, Math.min(index, mobileUpcomingParties.length - 1))];
 
     if (party && party.id !== selectedPartyId) {
       setSelectedPartyId(party.id);
@@ -433,7 +495,7 @@ export function PlannerDashboard({
       setCreateOpen(false);
       pushToast('Festa criada', `A festa "${created.name}" entrou no seu painel.`);
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Nao foi possivel criar a festa.');
+      setActionError(error instanceof Error ? error.message : 'Não foi possível criar a festa.');
     }
   }
 
@@ -448,7 +510,31 @@ export function PlannerDashboard({
       const dataUrl = await readImageAsDataUrl(file);
       setPartyForm((current) => ({ ...current, coverImageUrl: dataUrl }));
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Nao foi possivel carregar a imagem.');
+      setActionError(error instanceof Error ? error.message : 'Não foi possível carregar a imagem.');
+    }
+  }
+
+  async function handleTogglePartyFinalized(party: Party) {
+    try {
+      setActionError('');
+      const updated = await updateParty.mutateAsync({
+        partyId: party.id,
+        name: party.name,
+        category: party.category,
+        date: party.date,
+        time: party.time,
+        location: party.location,
+        coverImageUrl: party.coverImageUrl,
+        expectedGuests: party.expectedGuests,
+        estimatedBudget: party.budget.estimated,
+        isFinalized: !party.isFinalized
+      });
+      pushToast(
+        updated.isFinalized ? 'Evento finalizado' : 'Evento reaberto',
+        updated.isFinalized ? `"${updated.name}" saiu da home.` : `"${updated.name}" voltou para a home.`
+      );
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível atualizar o evento.');
     }
   }
 
@@ -461,11 +547,87 @@ export function PlannerDashboard({
 
     try {
       setActionError('');
-      await createTask.mutateAsync({ partyId: selectedParty.id, ...taskForm });
-      setTaskForm({ title: '', assignee: '' });
+      await createTask.mutateAsync({ partyId: selectedParty.id, ...taskForm, status: 'Pendente' });
+      setTaskForm({ title: '', assignee: '', description: '' });
       pushToast('Tarefa criada', 'A nova etapa foi adicionada ao evento.');
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Nao foi possivel criar a tarefa.');
+      setActionError(error instanceof Error ? error.message : 'Não foi possível criar a tarefa.');
+    }
+  }
+
+  async function handleMoveTask(taskId: string, status: string) {
+    if (!selectedParty) {
+      return;
+    }
+
+    try {
+      setActionError('');
+      await updateTask.mutateAsync({ partyId: selectedParty.id, taskId, status });
+      pushToast('Tarefa movida', `A tarefa foi movida para ${status}.`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível mover a tarefa.');
+    }
+  }
+
+  function startTaskEdit(task: TaskItem) {
+    setEditingTaskId(task.id);
+    setEditingTaskForm({
+      title: task.title,
+      assignee: task.assignee,
+      description: task.description ?? ''
+    });
+  }
+
+  async function handleSaveTask(task: TaskItem) {
+    if (!selectedParty) {
+      return;
+    }
+
+    try {
+      setActionError('');
+      await updateTask.mutateAsync({
+        partyId: selectedParty.id,
+        taskId: task.id,
+        title: editingTaskForm.title.trim(),
+        assignee: editingTaskForm.assignee.trim(),
+        description: editingTaskForm.description.trim(),
+        status: normalizeTaskStatus(task.status, task.done)
+      });
+      setEditingTaskId('');
+      pushToast('Tarefa atualizada', 'O card foi salvo com a descrição.');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível salvar a tarefa.');
+    }
+  }
+
+  function cancelTaskEdit() {
+    setEditingTaskId('');
+    setEditingTaskForm({ title: '', assignee: '', description: '' });
+  }
+
+  function handleTaskDragStart(event: React.DragEvent<HTMLElement>, taskId: string) {
+    setDraggingTaskId(taskId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', taskId);
+  }
+
+  function handleTaskDragOver(event: React.DragEvent<HTMLElement>) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }
+
+  function handleTaskDrop(event: React.DragEvent<HTMLElement>, status: string) {
+    event.preventDefault();
+    const taskId = event.dataTransfer.getData('text/plain') || draggingTaskId;
+    setDraggingTaskId('');
+
+    if (!taskId) {
+      return;
+    }
+
+    const currentTask = selectedParty?.tasks.find((task) => task.id === taskId);
+    if (currentTask && normalizeTaskStatus(currentTask.status, currentTask.done) !== status) {
+      void handleMoveTask(taskId, status);
     }
   }
 
@@ -481,9 +643,9 @@ export function PlannerDashboard({
       await createGuest.mutateAsync({ partyId: selectedParty.id, ...guestForm });
       setGuestForm({ name: '', group: '', email: '', phoneNumber: '+55 ' });
       setGuestDialogOpen(false);
-      pushToast('Convidado adicionado', 'A lista de presenca foi atualizada.');
+      pushToast('Convidado adicionado', 'A lista de presença foi atualizada.');
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Nao foi possivel adicionar o convidado.');
+      setActionError(error instanceof Error ? error.message : 'Não foi possível adicionar o convidado.');
     }
   }
 
@@ -502,7 +664,7 @@ export function PlannerDashboard({
   }
 
   function getInvitationMessage(guestName: string, invitationToken: string) {
-    return `Oi, ${guestName}! Voce recebeu um convite pelo Celebra. Confirme sua presenca aqui: ${getInvitationUrl(invitationToken)}`;
+    return `Oi, ${guestName}! Você recebeu um convite pelo Celebra. Confirme sua presença aqui: ${getInvitationUrl(invitationToken)}`;
   }
 
   function getWhatsappUrl(phoneNumber: string, guestName: string, invitationToken: string) {
@@ -549,6 +711,16 @@ export function PlannerDashboard({
     setSelectedPartyId(partyId);
   }
 
+  async function handleMarkAllNotificationsRead() {
+    await markAllAsRead.mutateAsync();
+  }
+
+  async function handleClearNotifications() {
+    await clearAllNotifications.mutateAsync();
+    setNotificationsOpen(false);
+    setMobileNotificationsOpen(false);
+  }
+
   function formatBrazilPhoneInput(value: string) {
     const digits = value.replace(/\D/g, '').replace(/^55/, '').slice(0, 11);
     const area = digits.slice(0, 2);
@@ -585,12 +757,60 @@ export function PlannerDashboard({
         partyId: selectedParty.id,
         label: budgetForm.label,
         category: budgetForm.category,
-        amount: Number(budgetForm.amount) || 0
+        amount: parseCurrencyInput(budgetForm.amount)
       });
-      setBudgetForm({ label: '', category: '', amount: '' });
+      setBudgetForm({ label: '', category: 'Outros', amount: '' });
       pushToast('Despesa registrada', 'O financeiro do evento foi atualizado.');
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Nao foi possivel registrar a despesa.');
+      setActionError(error instanceof Error ? error.message : 'Não foi possível registrar a despesa.');
+    }
+  }
+
+  function startBudgetItemEdit(item: Party['budget']['items'][number]) {
+    setEditingBudgetItemId(item.id);
+    setEditingBudgetAmount(currencyFormatter.format(item.amount));
+  }
+
+  async function handleUpdateBudgetItem(item: Party['budget']['items'][number]) {
+    if (!selectedParty) {
+      return;
+    }
+
+    try {
+      setActionError('');
+      await updateBudgetItem.mutateAsync({
+        partyId: selectedParty.id,
+        budgetItemId: item.id,
+        label: item.label,
+        category: item.category,
+        amount: parseCurrencyInput(editingBudgetAmount)
+      });
+      setEditingBudgetItemId('');
+      setEditingBudgetAmount('');
+      pushToast('Despesa atualizada', 'O valor foi recalculado no orçamento.');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível atualizar a despesa.');
+    }
+  }
+
+  async function handleDeleteBudgetItem(item: Party['budget']['items'][number]) {
+    if (!selectedParty) {
+      return;
+    }
+
+    try {
+      setActionError('');
+      await deleteBudgetItem.mutateAsync({
+        partyId: selectedParty.id,
+        budgetItemId: item.id
+      });
+      if (editingBudgetItemId === item.id) {
+        setEditingBudgetItemId('');
+        setEditingBudgetAmount('');
+      }
+      pushToast('Despesa removida', 'O total do orçamento foi atualizado.');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível excluir a despesa.');
     }
   }
 
@@ -627,7 +847,7 @@ export function PlannerDashboard({
 
             <Field label="Nome da festa">
               <Input
-                placeholder="Ex.: Aniversario da Sofia"
+                placeholder="Ex.: Aniversário da Sofia"
                 required
                 value={partyForm.name}
                 onChange={(event) => setPartyForm((current) => ({ ...current, name: event.target.value }))}
@@ -646,14 +866,14 @@ export function PlannerDashboard({
                   <SelectContent>
                     {partyCategories.filter((category) => category !== 'Todos').map((category) => (
                       <SelectItem key={category} value={category}>
-                        {category}
+                        {getPartyCategoryLabel(category)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </Field>
 
-              <Field label="Horario">
+              <Field label="Horário">
                 <Input
                   required
                   type="time"
@@ -684,13 +904,13 @@ export function PlannerDashboard({
 
             <Field label="Local">
               <Input
-                placeholder="Rua, numero, bairro"
+                placeholder="Rua, número, bairro"
                 value={partyForm.location}
                 onChange={(event) => setPartyForm((current) => ({ ...current, location: event.target.value }))}
               />
             </Field>
 
-            <Field label="Orcamento estimado">
+            <Field label="Orçamento estimado">
               <Input
                 disabled={partyForm.skipEstimatedBudget}
                 inputMode="decimal"
@@ -750,16 +970,16 @@ export function PlannerDashboard({
         type="button"
       >
         <div className="flex items-start justify-between gap-3">
-          <Badge className="border-sky-300/20 bg-sky-400/10 text-sky-100">{party.category}</Badge>
+          <Badge className="border-sky-300/20 bg-sky-400/10 text-sky-100">{getPartyCategoryLabel(party.category)}</Badge>
           <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">
-            {getDaysLeftLabel(party.date)}
+            {party.isFinalized ? 'Finalizada' : getDaysLeftLabel(party.date)}
           </span>
         </div>
 
         <div>
           <h3 className="text-2xl font-semibold leading-tight text-foreground">{party.name}</h3>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            {formatDateLabel(party.date)} as {party.time || '--:--'}
+            {formatDateLabel(party.date)} às {party.time || '--:--'}
           </p>
         </div>
 
@@ -781,6 +1001,18 @@ export function PlannerDashboard({
             />
           </div>
         </div>
+
+        <span
+          className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
+          onClick={(event) => {
+            event.stopPropagation();
+            void handleTogglePartyFinalized(party);
+          }}
+          role="button"
+          tabIndex={0}
+        >
+          {party.isFinalized ? 'Reabrir evento' : 'Finalizar evento'}
+        </span>
       </motion.button>
     );
   }
@@ -802,7 +1034,7 @@ export function PlannerDashboard({
                   {featuredParty.name}
                 </h2>
                 <p className="mt-3 text-slate-100/80">
-                  {formatDateLabel(featuredParty.date)} as {featuredParty.time} - {featuredParty.location || 'Local a definir'}
+                  {formatDateLabel(featuredParty.date)} às {featuredParty.time} - {featuredParty.location || 'Local a definir'}
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-3 text-center">
@@ -828,7 +1060,7 @@ export function PlannerDashboard({
           <CardHeader className="flex-row items-center justify-between gap-4">
             <div>
               <CardTitle>Festas em destaque</CardTitle>
-              <CardDescription>Cards grandes para comparar os proximos eventos.</CardDescription>
+              <CardDescription>Cards grandes para comparar os próximos eventos.</CardDescription>
             </div>
           </CardHeader>
           <CardContent>
@@ -836,7 +1068,7 @@ export function PlannerDashboard({
               <TabsList className="mb-5 flex max-w-full overflow-x-auto">
                 {partyCategories.map((category) => (
                   <TabsTrigger key={category} value={category}>
-                    {category}
+                    {getPartyCategoryLabel(category)}
                   </TabsTrigger>
                 ))}
               </TabsList>
@@ -858,7 +1090,7 @@ export function PlannerDashboard({
     return (
       <motion.button
         animate={{ opacity: 1, scale: isActive ? 1 : 0.98 }}
-        className="relative h-[244px] w-[calc(100vw-32px)] shrink-0 snap-center overflow-hidden rounded-[22px] border border-[#27365d] bg-[#071128] p-4 text-left text-white shadow-[0_22px_48px_rgba(0,0,0,0.34)]"
+        className="relative h-[244px] w-full min-w-full max-w-full shrink-0 snap-center overflow-hidden rounded-[22px] border border-[#27365d] bg-[#071128] p-4 text-left text-white shadow-[0_22px_48px_rgba(0,0,0,0.34)]"
         data-party-card
         initial={{ opacity: 0, scale: 0.98 }}
         key={party.id}
@@ -912,7 +1144,7 @@ export function PlannerDashboard({
       (selectedParty && isUpcomingParty(selectedParty) ? selectedParty : null) ??
       mobileUpcomingParties[0] ??
       null;
-    const party = activeMobileParty ?? featuredParty;
+    const party = activeMobileParty;
     const confirmed = party?.guests.filter((guest) => guest.status === 'Confirmado').length ?? 0;
     const expected = Math.max(party?.expectedGuests || 0, party?.guests.length || 0);
     const guestProgress = expected > 0 ? Math.min(100, Math.round((confirmed / expected) * 100)) : 0;
@@ -923,19 +1155,19 @@ export function PlannerDashboard({
     const tasks = party?.tasks.slice(0, 3) ?? [];
 
     return (
-      <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_50%_-12%,rgba(37,99,235,0.16),transparent_32%),#020914] px-4 pb-28 pt-3 text-slate-50">
-        <header className="mb-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="grid h-[50px] w-[50px] place-items-center rounded-[14px] bg-[linear-gradient(135deg,#5128ff,#f1329d)] text-white shadow-[0_14px_30px_rgba(127,34,230,0.32)]">
-              <PartyPopper size={29} />
+      <div className="min-h-dvh w-full max-w-[100dvw] overflow-x-clip bg-[radial-gradient(circle_at_50%_-12%,rgba(37,99,235,0.16),transparent_32%),#020914] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-3 text-slate-50">
+        <header className="mb-5 flex min-w-0 items-center justify-between gap-3 overflow-hidden">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#5128ff,#f1329d)] text-white shadow-[0_14px_30px_rgba(127,34,230,0.32)]">
+              <PartyPopper size={25} />
             </div>
-            <h1 className="bg-[linear-gradient(135deg,#5b35ff_8%,#f1329d_92%)] bg-clip-text text-[2.35rem] font-extrabold leading-none tracking-[-0.04em] text-transparent">
+            <h1 className="min-w-0 truncate bg-[linear-gradient(135deg,#5b35ff_8%,#f1329d_92%)] bg-clip-text text-[1.78rem] font-extrabold leading-none tracking-[-0.04em] text-transparent">
               Celebra
             </h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             <button
-              className="relative grid h-12 w-12 place-items-center rounded-full bg-transparent text-white"
+              className="relative grid h-10 w-10 place-items-center rounded-full bg-transparent text-white"
               onClick={() => setMobileNotificationsOpen(true)}
               type="button"
             >
@@ -946,7 +1178,7 @@ export function PlannerDashboard({
                 </span>
               ) : null}
             </button>
-            <div className="grid h-[50px] w-[50px] place-items-center rounded-full border-[3px] border-fuchsia-400 bg-[#0f172a] text-xs font-bold text-slate-50 shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
+            <div className="grid h-11 w-11 place-items-center rounded-full border-[3px] border-fuchsia-400 bg-[#0f172a] text-xs font-bold text-slate-50 shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
               {getInitials(session.user.name)}
             </div>
           </div>
@@ -954,7 +1186,7 @@ export function PlannerDashboard({
         {mobileUpcomingParties.length > 0 ? (
           <>
             <div
-              className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              className="flex w-full max-w-full snap-x snap-mandatory gap-3 overflow-x-auto pb-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               onScroll={handleMobileCarouselScroll}
               ref={mobileCarouselRef}
             >
@@ -1013,12 +1245,12 @@ export function PlannerDashboard({
               />
               <MobileMetricCard
                 icon={<CircleDollarSign size={22} />}
-                label="Orcamento"
+                label="Orçamento"
                 progress={budgetProgress}
                 tint="pink"
                 value={formatCompactCurrency(party.budget.spent)}
-                detail={party.budget.estimated === null ? 'sem limite definido' : `de ${formatCompactCurrency(party.budget.estimated)}`}
-                progressLabel={`${budgetProgress}%`}
+                detail={party.budget.estimated === null ? 'sem teto' : `de ${formatCompactCurrency(party.budget.estimated)}`}
+                progressLabel={party.budget.estimated === null ? undefined : `${budgetProgress}%`}
               />
             </div>
 
@@ -1052,7 +1284,7 @@ export function PlannerDashboard({
                     </div>
                     <div className="min-w-0">
                       <strong className="block truncate text-[1rem]">{task.title}</strong>
-                      <span className="text-sm text-[#8588a6]">{task.done ? 'Concluida' : task.status || 'Pendente'}</span>
+                      <span className="text-sm text-[#8588a6]">{task.done ? 'Concluída' : task.status || 'Pendente'}</span>
                     </div>
                     <span
                       className={cn(
@@ -1060,7 +1292,7 @@ export function PlannerDashboard({
                         task.done ? 'bg-[#dff7e9] text-[#22a35a]' : 'bg-[#fce2f0] text-[#ef3f98]'
                       )}
                     >
-                      {task.done ? 'Concluida' : 'Pendente'}
+                      {task.done ? 'Concluída' : 'Pendente'}
                     </span>
                   </div>
                 ))}
@@ -1079,7 +1311,7 @@ export function PlannerDashboard({
     return (
       <MobilePage
         title="Eventos"
-        subtitle="Gerencie e acompanhe suas celebracoes"
+        subtitle="Gerencie e acompanhe suas celebrações"
         action={null}
         headerAction={renderMobileHeaderActions()}
       >
@@ -1110,7 +1342,7 @@ export function PlannerDashboard({
               onClick={() => setCategoryFilter(category)}
               type="button"
             >
-              {category}
+              {getPartyCategoryLabel(category)}
             </button>
           ))}
         </div>
@@ -1128,7 +1360,14 @@ export function PlannerDashboard({
                 src={getPartyCoverImage(party)}
               />
               <div className="min-w-0 py-1">
-                <h2 className="line-clamp-1 text-base font-bold text-slate-50">{party.name}</h2>
+                <div className="flex min-w-0 items-start gap-2">
+                  <h2 className="line-clamp-1 flex-1 text-base font-bold text-slate-50">{party.name}</h2>
+                  {party.isFinalized ? (
+                    <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[0.58rem] font-bold text-slate-200">
+                      Finalizada
+                    </span>
+                  ) : null}
+                </div>
                 <div className="mt-2 grid gap-1.5 text-[0.78rem] text-slate-200">
                   <span className="flex items-center gap-2">
                     <CalendarDays className="shrink-0" size={16} />
@@ -1145,8 +1384,16 @@ export function PlannerDashboard({
                 <button className="grid h-9 w-9 place-items-center rounded-lg border border-[#7c3cff]/40 bg-[#2a0f3d]/70 text-[#c15cff]" type="button">
                   <Edit3 size={18} />
                 </button>
-                <button className="grid h-9 w-9 place-items-center rounded-lg border border-[#1f2c45] bg-[#061123]/90 text-slate-300" type="button">
-                  <MoreHorizontal size={18} />
+                <button
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-[#1f2c45] bg-[#061123]/90 text-slate-300"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void handleTogglePartyFinalized(party);
+                  }}
+                  type="button"
+                  title={party.isFinalized ? 'Reabrir evento' : 'Finalizar evento'}
+                >
+                  <CheckCheck size={18} />
                 </button>
               </div>
             </article>
@@ -1259,31 +1506,224 @@ export function PlannerDashboard({
     );
   }
 
+  function renderTaskEditForm(task: TaskItem, compact = false) {
+    return (
+      <div className="grid gap-2">
+        <Input
+          required
+          value={editingTaskForm.title}
+          onChange={(event) => setEditingTaskForm((current) => ({ ...current, title: event.target.value }))}
+        />
+        <Input
+          placeholder="Responsável"
+          value={editingTaskForm.assignee}
+          onChange={(event) => setEditingTaskForm((current) => ({ ...current, assignee: event.target.value }))}
+        />
+        <textarea
+          className={cn(
+            'w-full rounded-md border border-input bg-input px-3 py-2 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring',
+            compact ? 'min-h-[76px]' : 'min-h-[96px]'
+          )}
+          maxLength={500}
+          placeholder="Descrição"
+          value={editingTaskForm.description}
+          onChange={(event) => setEditingTaskForm((current) => ({ ...current, description: event.target.value }))}
+        />
+        <div className="flex items-center gap-2">
+          <Button disabled={updateTask.isPending || !editingTaskForm.title.trim()} onClick={() => void handleSaveTask(task)} size="sm" type="button" variant="premium">
+            <CheckCheck size={15} />
+            Salvar
+          </Button>
+          <Button onClick={cancelTaskEdit} size="sm" type="button" variant="outline">
+            <X size={15} />
+            Cancelar
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   function renderMobileTasks() {
     return (
       <MobilePage title="Tarefas" action={renderCreatePartyDialog()} headerAction={renderMobileHeaderActions()}>
         {renderMobilePartySelector()}
         <div className="grid gap-3">
-          {(selectedParty?.tasks ?? []).map((task) => (
-            <button
-              className="grid grid-cols-[44px_1fr_auto] items-center gap-3 rounded-[20px] border border-white/10 bg-[#101a2d] p-4 text-left shadow-[0_10px_26px_rgba(0,0,0,0.22)]"
-              key={task.id}
-              onClick={() => selectedParty ? void toggleTask.mutateAsync({ partyId: selectedParty.id, taskId: task.id }) : undefined}
-              type="button"
-            >
-              <span className={cn('grid h-11 w-11 place-items-center rounded-full text-white', task.done ? 'bg-[#5128ff]' : 'bg-[#ef3f98]')}>
-                <ClipboardCheck size={21} />
-              </span>
-              <span className="min-w-0">
-                <strong className="block truncate text-slate-50">{task.title}</strong>
-                <small className="text-sm text-slate-400">{task.assignee || 'Sem responsavel'}</small>
-              </span>
-              <span className={cn('rounded-full px-3 py-1.5 text-xs font-bold', task.done ? 'bg-[#dff7e9] text-[#22a35a]' : 'bg-[#fce2f0] text-[#ef3f98]')}>
-                {task.done ? 'Ok' : 'Pendente'}
-              </span>
-            </button>
-          ))}
+          {taskColumns.map((column) => {
+            const tasks = (selectedParty?.tasks ?? []).filter((task) => normalizeTaskStatus(task.status, task.done) === column.id);
+
+            return (
+              <section className="rounded-[20px] border border-white/10 bg-[#101a2d] p-3.5" key={column.id}>
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-base font-bold text-slate-50">{column.label}</h2>
+                  <span className={cn('rounded-full border px-2.5 py-1 text-xs font-bold', column.tone)}>{tasks.length}</span>
+                </div>
+                <div className="grid gap-2.5">
+                  {tasks.map((task) => (
+                    <article className="rounded-[16px] border border-white/10 bg-[#071225] p-3 shadow-[0_10px_24px_rgba(0,0,0,0.22)]" key={task.id}>
+                      {editingTaskId === task.id ? (
+                        renderTaskEditForm(task, true)
+                      ) : (
+                        <>
+                          <div className="flex items-start gap-3">
+                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#5128ff,#ef3f98)] text-white">
+                              <ClipboardCheck size={19} />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <strong className="block truncate text-slate-50">{task.title}</strong>
+                              <small className="text-sm text-slate-400">{task.assignee || 'Sem responsável'}</small>
+                              {task.description ? <p className="mt-2 line-clamp-3 text-sm text-slate-300">{task.description}</p> : null}
+                            </div>
+                            <Button className="h-9 w-9 shrink-0 px-0" onClick={() => startTaskEdit(task)} type="button" variant="outline">
+                              <Edit3 size={15} />
+                            </Button>
+                          </div>
+                          <div className="mt-3">
+                            <Select value={normalizeTaskStatus(task.status, task.done)} onValueChange={(value) => void handleMoveTask(task.id, value)}>
+                              <SelectTrigger className="h-10">
+                                <SelectValue placeholder="Mover para" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {taskColumns.map((option) => (
+                                  <SelectItem key={option.id} value={option.id}>
+                                    Mover para {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </>
+                      )}
+                    </article>
+                  ))}
+                  {tasks.length === 0 ? <p className="py-4 text-center text-sm text-slate-500">Sem tarefas.</p> : null}
+                </div>
+              </section>
+            );
+          })}
         </div>
+      </MobilePage>
+    );
+  }
+
+  function renderMobileExpenses() {
+    const hasBudgetCeiling = selectedParty?.budget.estimated !== null && (selectedParty?.budget.estimated ?? 0) > 0;
+    const budgetProgress =
+      selectedParty && hasBudgetCeiling
+        ? Math.min(100, Math.round((selectedParty.budget.spent / (selectedParty.budget.estimated ?? 1)) * 100))
+        : 0;
+
+    return (
+      <MobilePage title="Despesas" action={null} headerAction={renderMobileHeaderActions()}>
+        {renderMobilePartySelector()}
+
+        {selectedParty ? (
+          <>
+            <section className="rounded-[20px] border border-[#14233b] bg-[linear-gradient(145deg,rgba(10,22,39,0.96),rgba(5,13,28,0.98))] p-3.5">
+              <h2 className="text-lg font-bold text-white">{selectedParty.name}</h2>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <MetricMini label="Gasto" value={currencyFormatter.format(selectedParty.budget.spent)} />
+                <MetricMini label="Orçamento" value={hasBudgetCeiling ? currencyFormatter.format(selectedParty.budget.estimated ?? 0) : 'Sem teto'} />
+              </div>
+              {hasBudgetCeiling ? (
+                <div className="mt-4">
+                  <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
+                    <span>Uso</span>
+                    <span>{budgetProgress}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-[#172235]">
+                    <div className="h-full rounded-full bg-[linear-gradient(90deg,#5128ff,#ef3f98)]" style={{ width: `${budgetProgress}%` }} />
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 rounded-[14px] border border-sky-300/20 bg-sky-400/10 p-3 text-sm text-sky-100">
+                  Sem teto definido para as despesas.
+                </p>
+              )}
+            </section>
+
+            <section className="rounded-[20px] border border-[#14233b] bg-[linear-gradient(145deg,rgba(10,22,39,0.96),rgba(5,13,28,0.98))] p-3.5">
+              <h3 className="text-lg font-bold text-white">Nova despesa</h3>
+              <form className="mt-3 grid gap-3" onSubmit={handleCreateBudgetItem}>
+                <Input placeholder="Descrição" required value={budgetForm.label} onChange={(event) => setBudgetForm((current) => ({ ...current, label: event.target.value }))} />
+                <Select value={budgetForm.category} onValueChange={(value) => setBudgetForm((current) => ({ ...current, category: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {expenseCategories.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  inputMode="decimal"
+                  placeholder="R$ 0,00"
+                  required
+                  value={budgetForm.amount}
+                  onChange={(event) => setBudgetForm((current) => ({ ...current, amount: formatCurrencyInput(event.target.value) }))}
+                />
+                <Button disabled={createBudgetItem.isPending} type="submit" variant="premium">
+                  Salvar despesa
+                </Button>
+              </form>
+            </section>
+
+            <section className="grid gap-2.5">
+              {selectedParty.budget.items.length > 0 ? (
+                selectedParty.budget.items.map((item) => (
+                  <div className="grid gap-3 rounded-[18px] border border-white/10 bg-[#101a2d] p-3.5" key={item.id}>
+                    <div className="min-w-0">
+                      <strong className="block truncate text-slate-50">{item.label}</strong>
+                      <span className="text-sm text-slate-400">{getExpenseCategoryLabel(item.category)}</span>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+                      {editingBudgetItemId === item.id ? (
+                        <Input
+                          className="h-10"
+                          inputMode="decimal"
+                          value={editingBudgetAmount}
+                          onChange={(event) => setEditingBudgetAmount(formatCurrencyInput(event.target.value))}
+                        />
+                      ) : (
+                        <strong className="text-slate-50">{currencyFormatter.format(item.amount)}</strong>
+                      )}
+                      {editingBudgetItemId === item.id ? (
+                        <button
+                          className="grid h-10 w-10 place-items-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                          onClick={() => void handleUpdateBudgetItem(item)}
+                          type="button"
+                        >
+                          <CheckCheck size={17} />
+                        </button>
+                      ) : (
+                        <button
+                          className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/10 text-slate-200"
+                          onClick={() => startBudgetItemEdit(item)}
+                          type="button"
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                      )}
+                      <button
+                        className="grid h-10 w-10 place-items-center rounded-full border border-rose-400/30 bg-rose-400/10 text-rose-200"
+                        onClick={() => void handleDeleteBudgetItem(item)}
+                        type="button"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-[18px] border border-white/10 bg-[#101a2d] p-4 text-center text-sm text-slate-400">
+                  Nenhuma despesa registrada.
+                </p>
+              )}
+            </section>
+          </>
+        ) : null}
       </MobilePage>
     );
   }
@@ -1306,7 +1746,7 @@ export function PlannerDashboard({
         <section className="rounded-[26px] border border-white/10 bg-[#101a2d] p-5 shadow-[0_14px_36px_rgba(0,0,0,0.28)]">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <strong className="text-slate-50">Notificacoes</strong>
+              <strong className="text-slate-50">Notificações</strong>
               <p className="text-sm text-slate-400">Alertas e toasts do app.</p>
             </div>
             <Switch checked={notificationsEnabled} onCheckedChange={(checked) => void onNotificationsChange(checked)} />
@@ -1315,7 +1755,7 @@ export function PlannerDashboard({
 
         <Button className="h-12 w-full rounded-[18px]" onClick={onLogout} variant="premium">
           <LogOut size={18} />
-          Encerrar sessao
+          Encerrar sessão
         </Button>
       </MobilePage>
     );
@@ -1328,7 +1768,7 @@ export function PlannerDashboard({
           <TabsList className="flex max-w-full overflow-x-auto">
             {partyCategories.map((category) => (
               <TabsTrigger key={category} value={category}>
-                {category}
+                      {getPartyCategoryLabel(category)}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -1345,15 +1785,25 @@ export function PlannerDashboard({
               <CardHeader>
                 <CardTitle>{selectedParty.name}</CardTitle>
                 <CardDescription>
-                  {formatDateLabel(selectedParty.date)} as {selectedParty.time} - {selectedParty.location || 'Local a definir'}
+                  {formatDateLabel(selectedParty.date)} às {selectedParty.time} - {selectedParty.location || 'Local a definir'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4">
                 <div className="grid gap-3 md:grid-cols-3">
-                  <MetricPanel label="Orcamento" value={formatOptionalBudget(selectedParty.budget.estimated)} />
+                  <MetricPanel label="Orçamento" value={formatOptionalBudget(selectedParty.budget.estimated)} />
                   <MetricPanel label="Gasto atual" value={currencyFormatter.format(selectedParty.budget.spent)} />
                   <MetricPanel label="Convidados" value={`${selectedParty.guests.length}/${selectedParty.expectedGuests}`} />
                 </div>
+                <Button
+                  className="w-full md:w-fit"
+                  disabled={updateParty.isPending}
+                  onClick={() => void handleTogglePartyFinalized(selectedParty)}
+                  type="button"
+                  variant={selectedParty.isFinalized ? 'outline' : 'premium'}
+                >
+                  <CheckCheck size={17} />
+                  {selectedParty.isFinalized ? 'Reabrir evento' : 'Marcar como finalizado'}
+                </Button>
                 {selectedParty.location ? (
                   <a
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-4 text-sm font-semibold transition-colors hover:bg-white/10 md:w-fit"
@@ -1375,15 +1825,32 @@ export function PlannerDashboard({
               </CardHeader>
               <CardContent>
                 <form className="grid gap-3" onSubmit={handleCreateBudgetItem}>
-                  <Field label="Descricao">
+                  <Field label="Descrição">
                     <Input required value={budgetForm.label} onChange={(event) => setBudgetForm((current) => ({ ...current, label: event.target.value }))} />
                   </Field>
                   <div className="grid gap-3 md:grid-cols-2">
                     <Field label="Categoria">
-                      <Input required value={budgetForm.category} onChange={(event) => setBudgetForm((current) => ({ ...current, category: event.target.value }))} />
+                      <Select value={budgetForm.category} onValueChange={(value) => setBudgetForm((current) => ({ ...current, category: value }))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {expenseCategories.map((category) => (
+                            <SelectItem key={category.value} value={category.value}>
+                              {category.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </Field>
                     <Field label="Valor">
-                      <Input inputMode="decimal" required value={budgetForm.amount} onChange={(event) => setBudgetForm((current) => ({ ...current, amount: event.target.value }))} />
+                      <Input
+                        inputMode="decimal"
+                        placeholder="R$ 0,00"
+                        required
+                        value={budgetForm.amount}
+                        onChange={(event) => setBudgetForm((current) => ({ ...current, amount: formatCurrencyInput(event.target.value) }))}
+                      />
                     </Field>
                   </div>
                   <Button disabled={createBudgetItem.isPending} type="submit" variant="premium">
@@ -1483,7 +1950,7 @@ export function PlannerDashboard({
         <Card>
           <CardHeader>
             <CardTitle>Novo convidado</CardTitle>
-            <CardDescription>Entrada rapida para o evento selecionado.</CardDescription>
+            <CardDescription>Entrada rápida para o evento selecionado.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="grid gap-3" onSubmit={handleCreateGuest}>
@@ -1514,45 +1981,250 @@ export function PlannerDashboard({
     );
   }
 
+  function renderExpenses() {
+    if (!selectedParty) {
+      return <EmptyState onCreate={() => setCreateOpen(true)} />;
+    }
+
+    const hasBudgetCeiling = selectedParty.budget.estimated !== null && selectedParty.budget.estimated > 0;
+    const budgetProgress = hasBudgetCeiling
+      ? Math.min(100, Math.round((selectedParty.budget.spent / (selectedParty.budget.estimated ?? 1)) * 100))
+      : 0;
+
+    return (
+      <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Despesas</CardTitle>
+            <CardDescription>{selectedParty.name}</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <MetricPanel label="Orçamento" value={hasBudgetCeiling ? currencyFormatter.format(selectedParty.budget.estimated ?? 0) : 'Sem teto'} />
+              <MetricPanel label="Gasto atual" value={currencyFormatter.format(selectedParty.budget.spent)} />
+              <MetricPanel
+                label={hasBudgetCeiling ? 'Saldo' : 'Limite'}
+                value={hasBudgetCeiling ? currencyFormatter.format(Math.max((selectedParty.budget.estimated ?? 0) - selectedParty.budget.spent, 0)) : 'Livre'}
+              />
+            </div>
+
+            {hasBudgetCeiling ? (
+              <div>
+                <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Uso do orçamento</span>
+                  <span>{budgetProgress}%</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-gradient-to-r from-sky-300 to-fuchsia-400" style={{ width: `${budgetProgress}%` }} />
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-sky-300/20 bg-sky-400/10 p-4 text-sm text-sky-100">
+                Este evento não tem orçamento definido. As despesas ficam sem teto até você definir um valor.
+              </div>
+            )}
+
+            <div className="grid gap-3">
+              {selectedParty.budget.items.length > 0 ? (
+                selectedParty.budget.items.map((item) => (
+                  <div className="grid gap-3 rounded-lg border border-border bg-muted/40 p-4 md:grid-cols-[1fr_auto] md:items-center" key={item.id}>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <p className="mt-1 text-sm text-muted-foreground">{getExpenseCategoryLabel(item.category)}</p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                      {editingBudgetItemId === item.id ? (
+                        <Input
+                          className="h-9 w-36"
+                          inputMode="decimal"
+                          value={editingBudgetAmount}
+                          onChange={(event) => setEditingBudgetAmount(formatCurrencyInput(event.target.value))}
+                        />
+                      ) : (
+                        <strong className="min-w-28 text-right">{currencyFormatter.format(item.amount)}</strong>
+                      )}
+                      {editingBudgetItemId === item.id ? (
+                        <Button
+                          disabled={updateBudgetItem.isPending}
+                          onClick={() => void handleUpdateBudgetItem(item)}
+                          size="sm"
+                          type="button"
+                          variant="outline"
+                        >
+                          <CheckCheck size={15} />
+                          Salvar
+                        </Button>
+                      ) : (
+                        <Button onClick={() => startBudgetItemEdit(item)} size="sm" type="button" variant="outline">
+                          <Edit3 size={15} />
+                          Editar
+                        </Button>
+                      )}
+                      <Button
+                        disabled={deleteBudgetItem.isPending}
+                        onClick={() => void handleDeleteBudgetItem(item)}
+                        size="sm"
+                        type="button"
+                        variant="ghost"
+                      >
+                        <Trash2 size={15} />
+                        Excluir
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+                  Nenhuma despesa registrada.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Nova despesa</CardTitle>
+            <CardDescription>{hasBudgetCeiling ? 'Controle o consumo do orçamento.' : 'Evento sem teto de orçamento.'}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-3" onSubmit={handleCreateBudgetItem}>
+              <Field label="Descrição">
+                <Input required value={budgetForm.label} onChange={(event) => setBudgetForm((current) => ({ ...current, label: event.target.value }))} />
+              </Field>
+              <Field label="Categoria">
+                <Select value={budgetForm.category} onValueChange={(value) => setBudgetForm((current) => ({ ...current, category: value }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {expenseCategories.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field label="Valor">
+                <Input
+                  inputMode="decimal"
+                  placeholder="R$ 0,00"
+                  required
+                  value={budgetForm.amount}
+                  onChange={(event) => setBudgetForm((current) => ({ ...current, amount: formatCurrencyInput(event.target.value) }))}
+                />
+              </Field>
+              <Button disabled={createBudgetItem.isPending} type="submit" variant="premium">
+                <CircleDollarSign size={17} />
+                Salvar despesa
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   function renderTasks() {
     return (
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
         <Card>
           <CardHeader>
-            <CardTitle>Tarefas</CardTitle>
-            <CardDescription>Clique em uma tarefa para alternar o status.</CardDescription>
+            <CardTitle>Kanban de tarefas</CardTitle>
+            <CardDescription>Mova as tarefas entre as etapas da festa selecionada.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3">
-            {selectedParty?.tasks.map((task) => (
-              <button
-                className="grid rounded-lg border border-border bg-muted/40 p-4 text-left transition-colors hover:bg-muted md:grid-cols-[auto_1fr_auto] md:items-center md:gap-4"
-                key={task.id}
-                onClick={() => void toggleTask.mutateAsync({ partyId: selectedParty.id, taskId: task.id })}
-                type="button"
-              >
-                <span className={cn('mb-3 h-3 w-3 rounded-full md:mb-0', task.done ? 'bg-emerald-400' : 'bg-fuchsia-400')} />
-                <div>
-                  <strong>{task.title}</strong>
-                  <p className="mt-1 text-sm text-muted-foreground">Responsavel: {task.assignee || 'Sem responsavel'}</p>
-                </div>
-                <Badge>{task.done ? 'Feita' : 'Pendente'}</Badge>
-              </button>
-            )) ?? <p className="text-sm text-muted-foreground">Nenhuma festa selecionada.</p>}
+          <CardContent>
+            {selectedParty ? (
+              <div className="grid gap-3 xl:grid-cols-3">
+                {taskColumns.map((column) => {
+                  const tasks = selectedParty.tasks.filter((task) => normalizeTaskStatus(task.status, task.done) === column.id);
+
+                  return (
+                    <section
+                      className={cn(
+                        'min-h-[360px] rounded-lg border border-border bg-muted/25 p-3 transition-colors',
+                        draggingTaskId && 'border-sky-300/45 bg-sky-400/5'
+                      )}
+                      key={column.id}
+                      onDragOver={handleTaskDragOver}
+                      onDrop={(event) => handleTaskDrop(event, column.id)}
+                    >
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h3 className="font-semibold">{column.label}</h3>
+                        <Badge className={column.tone}>{tasks.length}</Badge>
+                      </div>
+                      <div className="grid gap-3">
+                        {tasks.map((task) => {
+                          return (
+                            <motion.article
+                              className={cn(
+                                'cursor-grab rounded-lg border border-border bg-card p-4 shadow-sm active:cursor-grabbing',
+                                draggingTaskId === task.id && 'opacity-55'
+                              )}
+                              draggable
+                              key={task.id}
+                              layout
+                              onDragEnd={() => setDraggingTaskId('')}
+                              onDragStart={(event) => handleTaskDragStart(event as unknown as React.DragEvent<HTMLElement>, task.id)}
+                              transition={{ duration: 0.16 }}
+                            >
+                              {editingTaskId === task.id ? renderTaskEditForm(task) : null}
+                              <div className={cn('flex items-start justify-between gap-3', editingTaskId === task.id && 'hidden')}>
+                                <div className="min-w-0">
+                                  <strong className="block truncate">{task.title}</strong>
+                                  <p className="mt-1 text-sm text-muted-foreground">Responsável: {task.assignee || 'Sem responsável'}</p>
+                                  {task.description ? <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">{task.description}</p> : null}
+                                </div>
+                                <div className="flex shrink-0 items-center gap-2">
+                                  <Button className="h-9 w-9 px-0" onClick={() => startTaskEdit(task)} type="button" variant="outline">
+                                    <Edit3 size={15} />
+                                  </Button>
+                                  <ClipboardCheck className="text-sky-200" size={19} />
+                                </div>
+                              </div>
+                              <p className={cn('mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-center text-xs font-semibold text-muted-foreground', editingTaskId === task.id && 'hidden')}>
+                                Arraste para outra coluna
+                              </p>
+                            </motion.article>
+                          );
+                        })}
+                        {tasks.length === 0 ? (
+                          <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+                            Sem tarefas nesta etapa.
+                          </div>
+                        ) : null}
+                      </div>
+                    </section>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma festa selecionada.</p>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Nova tarefa</CardTitle>
-            <CardDescription>Crie uma proxima acao para a festa ativa.</CardDescription>
+            <CardDescription>Crie uma próxima ação para a festa ativa.</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="grid gap-3" onSubmit={handleCreateTask}>
-              <Field label="Titulo">
+              <Field label="Título">
                 <Input required value={taskForm.title} onChange={(event) => setTaskForm((current) => ({ ...current, title: event.target.value }))} />
               </Field>
-              <Field label="Responsavel">
+              <Field label="Responsável">
                 <Input value={taskForm.assignee} onChange={(event) => setTaskForm((current) => ({ ...current, assignee: event.target.value }))} />
+              </Field>
+              <Field label="Descrição">
+                <textarea
+                  className="min-h-[96px] w-full rounded-md border border-input bg-input px-3 py-2 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
+                  maxLength={500}
+                  value={taskForm.description}
+                  onChange={(event) => setTaskForm((current) => ({ ...current, description: event.target.value }))}
+                />
               </Field>
               <Button disabled={!selectedParty || createTask.isPending} type="submit" variant="premium">
                 Salvar tarefa
@@ -1569,21 +2241,21 @@ export function PlannerDashboard({
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Preferencias</CardTitle>
-            <CardDescription>Ajustes rapidos da experiencia PWA.</CardDescription>
+            <CardTitle>Preferências</CardTitle>
+            <CardDescription>Ajustes rápidos da experiência PWA.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-5">
             <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/40 p-4">
               <div>
-                <strong>Notificacoes elegantes</strong>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">Toasts para login, criacao e atualizacoes importantes.</p>
+                <strong>Notificações elegantes</strong>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">Toasts para login, criação e atualizações importantes.</p>
               </div>
               <Switch checked={notificationsEnabled} onCheckedChange={(checked) => void onNotificationsChange(checked)} />
             </div>
             <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/40 p-4">
               <div>
                 <strong>Tema premium</strong>
-                <p className="mt-1 text-sm leading-5 text-muted-foreground">Dark como padrao, com opcao clara preservada.</p>
+                <p className="mt-1 text-sm leading-5 text-muted-foreground">Dark como padrão, com opção clara preservada.</p>
               </div>
               <Button
                 size="icon"
@@ -1614,7 +2286,7 @@ export function PlannerDashboard({
             </div>
             <Button className="w-full" onClick={onLogout} variant="outline">
               <LogOut size={17} />
-              Encerrar sessao
+          Encerrar sessão
             </Button>
           </CardContent>
         </Card>
@@ -1702,7 +2374,7 @@ export function PlannerDashboard({
                   <strong className="block truncate text-[0.73rem] font-bold text-slate-50">{party.name}</strong>
                   <span className="mt-0.5 block truncate text-[0.62rem] font-semibold text-slate-400">
                     {formatShortDateLabel(party.date)}
-                    {party.time ? ` as ${party.time}` : ''}
+                    {party.time ? ` às ${party.time}` : ''}
                   </span>
                 </span>
               </button>
@@ -1791,13 +2463,13 @@ export function PlannerDashboard({
   function renderMobileNotificationsSheet() {
     return (
       <Dialog open={mobileNotificationsOpen} onOpenChange={setMobileNotificationsOpen}>
-        <DialogContent className="bottom-0 top-auto max-h-[78vh] w-full max-w-none translate-y-0 rounded-b-none rounded-t-[26px] border-white/10 bg-[#071225] p-5 text-slate-50 sm:left-1/2 sm:top-1/2 sm:max-w-md sm:-translate-y-1/2 sm:rounded-[22px]">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Notificacoes</DialogTitle>
-            <DialogDescription className="text-slate-400">{unreadNotifications} nao lidas</DialogDescription>
+        <DialogContent className="bottom-0 top-auto flex max-h-[78vh] w-full max-w-none translate-y-0 grid-rows-none flex-col gap-0 overflow-hidden rounded-b-none rounded-t-[26px] border-white/10 bg-[#071225] p-0 text-slate-50 sm:left-1/2 sm:top-1/2 sm:max-w-md sm:-translate-y-1/2 sm:rounded-[22px]">
+          <DialogHeader className="shrink-0 p-5 pb-3">
+            <DialogTitle className="text-2xl font-bold">Notificações</DialogTitle>
+            <DialogDescription className="text-slate-400">{unreadNotifications} não lidas</DialogDescription>
           </DialogHeader>
 
-          <div className="grid max-h-[46vh] gap-3 overflow-y-auto pr-1">
+          <div className="grid min-h-0 flex-1 gap-3 overflow-y-auto px-5 pb-4 pr-4">
             {notifications.length > 0 ? (
               notifications.map((notification) => (
                 <div className="rounded-[16px] border border-white/10 bg-white/[0.05] p-3" key={notification.id}>
@@ -1807,15 +2479,15 @@ export function PlannerDashboard({
               ))
             ) : (
               <p className="rounded-[16px] border border-white/10 bg-white/[0.05] p-4 text-sm text-slate-400">
-                Nenhuma notificacao por enquanto.
+                Nenhuma notificação por enquanto.
               </p>
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          <div className="sticky bottom-0 grid shrink-0 grid-cols-2 gap-2 border-t border-white/10 bg-[#071225]/95 p-4 backdrop-blur">
             <Button
               disabled={markAllAsRead.isPending || notifications.length === 0}
-              onClick={() => void markAllAsRead.mutateAsync()}
+              onClick={() => void handleMarkAllNotificationsRead()}
               size="sm"
               type="button"
               variant="outline"
@@ -1824,7 +2496,7 @@ export function PlannerDashboard({
             </Button>
             <Button
               disabled={clearAllNotifications.isPending || notifications.length === 0}
-              onClick={() => void clearAllNotifications.mutateAsync()}
+              onClick={() => void handleClearNotifications()}
               size="sm"
               type="button"
               variant="ghost"
@@ -1841,9 +2513,9 @@ export function PlannerDashboard({
 
   return (
     <ToastProvider swipeDirection="right">
-      <div className="min-h-screen px-0 py-0 lg:px-8 lg:py-4">
-        <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-[260px_1fr]">
-          <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] rounded-lg border border-border bg-card/80 p-4 shadow-2xl backdrop-blur-xl lg:grid lg:content-between">
+      <div className="min-h-screen max-w-[100dvw] overflow-x-hidden px-0 py-0 lg:max-w-none lg:px-4 lg:py-4">
+        <div className="mx-auto max-w-none">
+          <aside className="fixed left-4 top-4 hidden h-[calc(100vh-2rem)] w-[260px] rounded-lg border border-border bg-card/80 p-4 shadow-2xl backdrop-blur-xl lg:grid lg:content-between">
             <div>
               <div className="mb-8 flex items-center gap-3 px-2">
                 <img alt="Celebra" className="h-12 w-12 rounded-full" src="/brand/celebra-mark-white.png" />
@@ -1875,7 +2547,7 @@ export function PlannerDashboard({
             </Button>
           </aside>
 
-          <main className="min-w-0">
+          <main className="min-w-0 lg:ml-[284px]">
             <div className="lg:hidden">
               {renderMobileNotificationsSheet()}
               {activeSection === 'Painel' ? renderMobileHome() : null}
@@ -1884,6 +2556,7 @@ export function PlannerDashboard({
                   {activeSection === 'Eventos' ? renderMobileEvents() : null}
                   {activeSection === 'Convidados' ? renderMobileGuests() : null}
                   {activeSection === 'Tarefas' ? renderMobileTasks() : null}
+                  {activeSection === 'Despesas' ? renderMobileExpenses() : null}
                   {activeSection === 'Ajustes' ? renderMobileProfile() : null}
                 </>
               ) : null}
@@ -1894,7 +2567,7 @@ export function PlannerDashboard({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-300">{activeLabel}</p>
-                  <h1 className="mt-1 truncate text-2xl font-semibold md:text-3xl">Ola, {session.user.name}</h1>
+                  <h1 className="mt-1 truncate text-2xl font-semibold md:text-3xl">Olá, {session.user.name}</h1>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="relative">
@@ -1907,27 +2580,31 @@ export function PlannerDashboard({
                       </span>
                     ) : null}
                     {notificationsOpen ? (
-                      <Card className="absolute right-0 top-14 z-40 w-[min(90vw,360px)] overflow-hidden">
+                      <Card className="absolute right-0 top-14 z-40 flex max-h-[min(70vh,520px)] w-[min(90vw,360px)] flex-col overflow-hidden">
                         <CardHeader className="border-b border-border">
-                          <CardTitle>Notificacoes</CardTitle>
-                          <CardDescription>{unreadNotifications} nao lidas</CardDescription>
+                          <CardTitle>Notificações</CardTitle>
+                          <CardDescription>{unreadNotifications} não lidas</CardDescription>
                         </CardHeader>
-                        <CardContent className="grid max-h-96 gap-3 overflow-y-auto p-3">
-                          {notifications.map((notification) => (
-                            <div className="rounded-md bg-muted/50 p-3" key={notification.id}>
-                              <strong className="text-sm">{notification.title}</strong>
-                              <p className="mt-1 text-sm leading-5 text-muted-foreground">{notification.message}</p>
-                            </div>
-                          ))}
-                          <div className="grid grid-cols-2 gap-2">
-                            <Button size="sm" variant="outline" onClick={() => void markAllAsRead.mutateAsync()}>
+                        <CardContent className="grid min-h-0 flex-1 gap-3 overflow-y-auto p-3">
+                          {notifications.length > 0 ? (
+                            notifications.map((notification) => (
+                              <div className="rounded-md bg-muted/50 p-3" key={notification.id}>
+                                <strong className="text-sm">{notification.title}</strong>
+                                <p className="mt-1 text-sm leading-5 text-muted-foreground">{notification.message}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">Nenhuma notificação por enquanto.</p>
+                          )}
+                        </CardContent>
+                        <div className="sticky bottom-0 grid grid-cols-2 gap-2 border-t border-border bg-card/95 p-3 backdrop-blur">
+                            <Button disabled={markAllAsRead.isPending || notifications.length === 0} size="sm" variant="outline" onClick={() => void handleMarkAllNotificationsRead()}>
                               Ler tudo
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => void clearAllNotifications.mutateAsync()}>
+                            <Button disabled={clearAllNotifications.isPending || notifications.length === 0} size="sm" variant="ghost" onClick={() => void handleClearNotifications()}>
                               Limpar
                             </Button>
-                          </div>
-                        </CardContent>
+                        </div>
                       </Card>
                     ) : null}
                   </div>
@@ -1955,6 +2632,7 @@ export function PlannerDashboard({
                 {activeSection === 'Eventos' ? renderEvents() : null}
                 {activeSection === 'Convidados' ? renderGuests() : null}
                 {activeSection === 'Tarefas' ? renderTasks() : null}
+                {activeSection === 'Despesas' ? renderExpenses() : null}
                 {activeSection === 'Ajustes' ? renderSettings() : null}
               </motion.div>
             </AnimatePresence>
@@ -1962,20 +2640,21 @@ export function PlannerDashboard({
           </main>
         </div>
 
-        <nav className="fixed inset-x-2 bottom-3 z-50 grid h-[54px] grid-cols-5 rounded-[18px] border border-white/12 bg-[#071225]/58 px-1 py-1 shadow-[0_18px_42px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-2xl supports-[backdrop-filter]:bg-[#071225]/46 lg:hidden">
+        <nav className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 right-3 z-[9999] grid h-14 grid-cols-6 rounded-[18px] border border-white/12 bg-[#071225]/72 px-2 py-1 shadow-[0_18px_42px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-2xl supports-[backdrop-filter]:bg-[#071225]/58 lg:hidden">
           {sections.map((section) => (
             <button
               className={cn(
-                'grid min-w-0 overflow-hidden place-items-center content-center gap-0 rounded-[16px] px-0 text-[0.445rem] font-medium leading-none text-slate-300/80 transition-colors',
+                'relative grid min-w-0 place-items-center rounded-[16px] text-slate-300/80 transition-colors',
                 activeSection === section.id && 'bg-transparent text-[#7c3cff]'
               )}
               key={section.id}
               onClick={() => setActiveSection(section.id)}
               type="button"
+              aria-label={section.label}
+              title={section.label}
             >
-              <section.icon size={18} strokeWidth={activeSection === section.id ? 2.8 : 2.2} />
-              <span className="block w-full whitespace-nowrap text-center tracking-[-0.03em]">{section.label}</span>
-              <span className={cn('h-0.5 w-6 rounded-full', activeSection === section.id ? 'bg-[#7c3cff]' : 'bg-transparent')} />
+              <section.icon size={22} strokeWidth={activeSection === section.id ? 2.8 : 2.2} />
+              <span className={cn('absolute bottom-1 h-0.5 w-5 rounded-full', activeSection === section.id ? 'bg-[#7c3cff]' : 'bg-transparent')} />
             </button>
           ))}
         </nav>
@@ -1999,18 +2678,18 @@ function MobilePage({
   title: string;
 }) {
   return (
-    <div className="min-h-screen max-w-full overflow-x-hidden bg-[#020914] px-4 pb-28 pt-5 text-slate-50">
-      <header className="mb-5 grid gap-5">
-        <div className="flex items-center justify-between gap-3">
+    <div className="min-h-dvh w-full max-w-[100dvw] overflow-x-clip bg-[#020914] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 text-slate-50">
+      <header className="mb-5 grid min-w-0 gap-5 overflow-hidden">
+        <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#5128ff,#f1329d)]">
-              <PartyPopper size={28} />
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#5128ff,#f1329d)]">
+              <PartyPopper size={25} />
             </div>
-            <strong className="bg-[linear-gradient(135deg,#5b35ff_8%,#f1329d_92%)] bg-clip-text text-[2.35rem] font-extrabold leading-none text-transparent">
+            <strong className="min-w-0 truncate bg-[linear-gradient(135deg,#5b35ff_8%,#f1329d_92%)] bg-clip-text text-[1.78rem] font-extrabold leading-none text-transparent">
               Celebra
             </strong>
           </div>
-          {headerAction}
+          <div className="shrink-0">{headerAction}</div>
         </div>
         <div>
           <h1 className="truncate text-4xl font-bold">{title}</h1>
@@ -2018,7 +2697,7 @@ function MobilePage({
         </div>
         <div className="shrink-0">{action}</div>
       </header>
-      <div className="grid min-w-0 max-w-full gap-4 overflow-hidden">{children}</div>
+      <div className="grid min-w-0 max-w-full gap-4 overflow-x-clip">{children}</div>
     </div>
   );
 }
@@ -2054,7 +2733,7 @@ function MobileMetricCard({
   value: string;
 }) {
   return (
-    <section className="min-h-[168px] min-w-0 rounded-[20px] border border-[#14233b] bg-[linear-gradient(145deg,rgba(10,22,39,0.96),rgba(5,13,28,0.98))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_34px_rgba(0,0,0,0.28)]">
+    <section className="min-h-[168px] min-w-0 overflow-hidden rounded-[20px] border border-[#14233b] bg-[linear-gradient(145deg,rgba(10,22,39,0.96),rgba(5,13,28,0.98))] p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_34px_rgba(0,0,0,0.28)]">
       <h3 className="line-clamp-2 min-h-9 text-[0.78rem] font-bold leading-[1.15] text-white">{label}</h3>
       <div className="mt-4 grid min-h-[54px] grid-cols-[40px_minmax(0,1fr)] items-center gap-3">
         <div
@@ -2078,7 +2757,7 @@ function MobileMetricCard({
           />
         </div>
         {progressLabel ? (
-          <span className="whitespace-nowrap text-[0.72rem] font-bold text-[#ef3f98]">{progressLabel}</span>
+          <span className="max-w-14 truncate whitespace-nowrap text-right text-[0.72rem] font-bold text-[#ef3f98]">{progressLabel}</span>
         ) : null}
       </div>
     </section>

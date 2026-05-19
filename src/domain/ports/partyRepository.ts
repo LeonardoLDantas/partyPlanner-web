@@ -9,6 +9,7 @@ export type CreatePartyInput = {
   coverImageUrl?: string;
   expectedGuests?: number;
   estimatedBudget: number | null;
+  isFinalized?: boolean;
 };
 
 export type UpdatePartyInput = CreatePartyInput;
@@ -17,6 +18,14 @@ export type CreateTaskInput = {
   title: string;
   assignee: string;
   dueDate?: string;
+  description?: string;
+  status?: string;
+};
+
+export type UpdateTaskInput = {
+  title?: string;
+  assignee?: string;
+  description?: string;
   status?: string;
 };
 
@@ -38,8 +47,11 @@ export interface PartyRepository {
   createParty(input: CreatePartyInput): Promise<Party>;
   updateParty(partyId: string, input: UpdatePartyInput): Promise<Party>;
   createTask(partyId: string, input: CreateTaskInput): Promise<Party>;
+  updateTask(partyId: string, taskId: string, input: UpdateTaskInput): Promise<Party>;
   createGuest(partyId: string, input: CreateGuestInput): Promise<Party>;
   createBudgetItem(partyId: string, input: CreateBudgetItemInput): Promise<Party>;
+  updateBudgetItem(partyId: string, budgetItemId: string, input: CreateBudgetItemInput): Promise<Party>;
+  deleteBudgetItem(partyId: string, budgetItemId: string): Promise<Party>;
   toggleTask(partyId: string, taskId: string): Promise<Party>;
   getInvitation(token: string): Promise<Invitation>;
   respondInvitation(token: string, status: 'Confirmado' | 'Recusou'): Promise<Invitation>;

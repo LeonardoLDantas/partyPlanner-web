@@ -5,6 +5,7 @@ import type {
   CreateBudgetItemInput,
   CreatePartyInput,
   CreateTaskInput,
+  UpdateTaskInput,
   UpdatePartyInput
 } from '@/domain/ports/partyRepository';
 import { container } from '@/infrastructure/container';
@@ -64,8 +65,12 @@ export function useDashboardData(enabled: boolean) {
         name: variables.name,
         category: variables.category,
         date: variables.date,
+        time: variables.time,
         location: variables.location,
-        estimatedBudget: variables.estimatedBudget
+        coverImageUrl: variables.coverImageUrl,
+        expectedGuests: variables.expectedGuests,
+        estimatedBudget: variables.estimatedBudget,
+        isFinalized: variables.isFinalized
       }),
     onSuccess: (updatedParty) => {
       queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
@@ -78,7 +83,24 @@ export function useDashboardData(enabled: boolean) {
     mutationFn: async (variables: { partyId: string } & CreateTaskInput) =>
       container.partyRepository.createTask(variables.partyId, {
         title: variables.title,
-        assignee: variables.assignee
+        assignee: variables.assignee,
+        description: variables.description,
+        status: variables.status
+      }),
+    onSuccess: (updatedParty) => {
+      queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
+        syncPartyIntoDashboard(current, updatedParty)
+      );
+    }
+  });
+
+  const updateTask = useMutation({
+    mutationFn: async (variables: { partyId: string; taskId: string } & UpdateTaskInput) =>
+      container.partyRepository.updateTask(variables.partyId, variables.taskId, {
+        title: variables.title,
+        assignee: variables.assignee,
+        description: variables.description,
+        status: variables.status
       }),
     onSuccess: (updatedParty) => {
       queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
@@ -116,6 +138,30 @@ export function useDashboardData(enabled: boolean) {
     }
   });
 
+  const updateBudgetItem = useMutation({
+    mutationFn: async (variables: { partyId: string; budgetItemId: string } & CreateBudgetItemInput) =>
+      container.partyRepository.updateBudgetItem(variables.partyId, variables.budgetItemId, {
+        label: variables.label,
+        category: variables.category,
+        amount: variables.amount
+      }),
+    onSuccess: (updatedParty) => {
+      queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
+        syncPartyIntoDashboard(current, updatedParty)
+      );
+    }
+  });
+
+  const deleteBudgetItem = useMutation({
+    mutationFn: async (variables: { partyId: string; budgetItemId: string }) =>
+      container.partyRepository.deleteBudgetItem(variables.partyId, variables.budgetItemId),
+    onSuccess: (updatedParty) => {
+      queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
+        syncPartyIntoDashboard(current, updatedParty)
+      );
+    }
+  });
+
   const toggleTask = useMutation({
     mutationFn: async (variables: { partyId: string; taskId: string }) =>
       container.partyRepository.toggleTask(variables.partyId, variables.taskId),
@@ -131,8 +177,11 @@ export function useDashboardData(enabled: boolean) {
     createParty,
     updateParty,
     createTask,
+    updateTask,
     createGuest,
     createBudgetItem,
+    updateBudgetItem,
+    deleteBudgetItem,
     toggleTask,
     markAllAsRead,
     clearAllNotifications

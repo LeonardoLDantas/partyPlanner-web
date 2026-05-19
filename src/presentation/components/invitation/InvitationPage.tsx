@@ -57,8 +57,8 @@ export function InvitationPage() {
             <CardContent className="p-6 text-center text-slate-300">Carregando convite...</CardContent>
           ) : invitationQuery.isError || !invitation ? (
             <CardContent className="grid gap-3 p-6 text-center">
-              <h1 className="text-2xl font-bold">Convite nao encontrado</h1>
-              <p className="text-sm leading-6 text-slate-400">Confira se o link recebido esta completo.</p>
+              <h1 className="text-2xl font-bold">Convite não encontrado</h1>
+              <p className="text-sm leading-6 text-slate-400">Confira se o link recebido está completo.</p>
             </CardContent>
           ) : (
             <>
@@ -75,10 +75,10 @@ export function InvitationPage() {
 
               <CardContent className="grid gap-5 p-5">
                 <div>
-                  <p className="text-sm text-slate-400">Ola,</p>
+                  <p className="text-sm text-slate-400">Olá,</p>
                   <h2 className="text-2xl font-bold">{invitation.guestName}</h2>
                   <p className="mt-2 text-sm leading-6 text-slate-300">
-                    Confirme sua presenca para que o anfitriao receba sua resposta automaticamente.
+                    Confirme sua presença para que o anfitrião receba sua resposta automaticamente.
                   </p>
                 </div>
 
