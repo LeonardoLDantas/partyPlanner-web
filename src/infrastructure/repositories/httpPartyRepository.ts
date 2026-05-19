@@ -45,10 +45,22 @@ export class HttpPartyRepository implements PartyRepository {
     });
   }
 
+  deleteTask(partyId: string, taskId: string) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks/${taskId}`, {
+      method: 'DELETE'
+    });
+  }
+
   createGuest(partyId: string, input: CreateGuestInput) {
     return this.httpClient.request<Party>(`/api/parties/${partyId}/guests`, {
       method: 'POST',
       body: JSON.stringify(input)
+    });
+  }
+
+  deleteGuest(partyId: string, guestId: string) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/guests/${guestId}`, {
+      method: 'DELETE'
     });
   }
 

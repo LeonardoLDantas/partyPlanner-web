@@ -33,8 +33,11 @@ export class HttpClient {
     }
 
     try {
-      const parsed = JSON.parse(rawBody) as { message?: string };
-      return parsed.message ?? rawBody;
+      const parsed = JSON.parse(rawBody) as { message?: string; title?: string; errors?: Record<string, string[]> };
+      const validationMessage = parsed.errors
+        ? Object.values(parsed.errors).flat().find(Boolean)
+        : null;
+      return parsed.message ?? validationMessage ?? parsed.title ?? rawBody;
     } catch {
       return rawBody;
     }

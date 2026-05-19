@@ -9,6 +9,7 @@ import {
   Copy,
   Gift,
   Home,
+  Eye,
   LogOut,
   Mail,
   MapPinned,
@@ -112,6 +113,7 @@ type PartyFormState = {
   expectedGuests: string;
   estimatedBudget: string;
   skipEstimatedBudget: boolean;
+  isFinalized: boolean;
 };
 
 function createEmptyPartyForm(): PartyFormState {
@@ -124,7 +126,8 @@ function createEmptyPartyForm(): PartyFormState {
     coverImageUrl: '',
     expectedGuests: '60',
     estimatedBudget: '',
-    skipEstimatedBudget: false
+    skipEstimatedBudget: false,
+    isFinalized: false
   };
 }
 
@@ -328,6 +331,8 @@ export function PlannerDashboard({
   const [guestFilter, setGuestFilter] = useState<'Todos' | GuestStatus>('Todos');
   const [guestSearch, setGuestSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingPartyId, setEditingPartyId] = useState('');
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [guestDialogOpen, setGuestDialogOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
@@ -337,6 +342,7 @@ export function PlannerDashboard({
   const [taskForm, setTaskForm] = useState({ title: '', assignee: '', description: '' });
   const [editingTaskId, setEditingTaskId] = useState('');
   const [editingTaskForm, setEditingTaskForm] = useState({ title: '', assignee: '', description: '' });
+  const [viewingTask, setViewingTask] = useState<TaskItem | null>(null);
   const [guestForm, setGuestForm] = useState({ name: '', group: '', email: '', phoneNumber: '+55 ' });
   const [budgetForm, setBudgetForm] = useState({ label: '', category: 'Outros', amount: '' });
   const [editingBudgetItemId, setEditingBudgetItemId] = useState('');
@@ -353,7 +359,9 @@ export function PlannerDashboard({
     updateParty,
     createTask,
     updateTask,
+    deleteTask,
     createGuest,
+    deleteGuest,
     createBudgetItem,
     updateBudgetItem,
     deleteBudgetItem,
@@ -377,6 +385,7 @@ export function PlannerDashboard({
     () => parties.find((party) => party.id === selectedPartyId) ?? filteredParties[0] ?? parties[0] ?? null,
     [filteredParties, parties, selectedPartyId]
   );
+  const selectedPartyLocked = Boolean(selectedParty && (selectedParty.isFinalized || !selectedParty.canEdit));
 
   const featuredParty = useMemo(() => {
     return [...parties].filter(isUpcomingParty).sort((first, second) => {
@@ -478,7 +487,7 @@ export function PlannerDashboard({
 
     try {
       setActionError('');
-      const created = await createParty.mutateAsync({
+      const payload = {
         name: partyForm.name.trim(),
         category: partyForm.category,
         date: partyForm.date,
@@ -486,17 +495,47 @@ export function PlannerDashboard({
         location: partyForm.location.trim(),
         coverImageUrl: partyForm.coverImageUrl,
         expectedGuests: Number(partyForm.expectedGuests) || 0,
-        estimatedBudget: partyForm.skipEstimatedBudget ? null : Number(partyForm.estimatedBudget) || 0
-      });
+        estimatedBudget: partyForm.skipEstimatedBudget ? null : Number(partyForm.estimatedBudget) || 0,
+        isFinalized: partyForm.isFinalized
+      };
+      const saved = editingPartyId
+        ? await updateParty.mutateAsync({ partyId: editingPartyId, ...payload })
+        : await createParty.mutateAsync(payload);
 
       setPartyForm(createEmptyPartyForm());
-      setSelectedPartyId(created.id);
+      setEditingPartyId('');
+      setSelectedPartyId(saved.id);
       setActiveSection('Eventos');
       setCreateOpen(false);
-      pushToast('Festa criada', `A festa "${created.name}" entrou no seu painel.`);
+      pushToast(editingPartyId ? 'Festa atualizada' : 'Festa criada', `A festa "${saved.name}" foi salva.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Não foi possível criar a festa.');
     }
+  }
+
+  function openCreatePartyDialog() {
+    setActionError('');
+    setEditingPartyId('');
+    setPartyForm(createEmptyPartyForm());
+    setCreateOpen(true);
+  }
+
+  function openEditPartyDialog(party: Party) {
+    setActionError('');
+    setEditingPartyId(party.id);
+    setPartyForm({
+      name: party.name,
+      category: party.category,
+      date: party.date,
+      time: party.time || '19:00',
+      location: party.location,
+      coverImageUrl: party.coverImageUrl,
+      expectedGuests: String(party.expectedGuests || ''),
+      estimatedBudget: party.budget.estimated === null ? '' : String(party.budget.estimated),
+      skipEstimatedBudget: party.budget.estimated === null,
+      isFinalized: party.isFinalized
+    });
+    setCreateOpen(true);
   }
 
   async function handleCoverImageChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -545,10 +584,16 @@ export function PlannerDashboard({
       return;
     }
 
+    if (selectedPartyLocked) {
+      setActionError('Este evento já foi finalizado. Não é possível adicionar novas tarefas.');
+      return;
+    }
+
     try {
       setActionError('');
       await createTask.mutateAsync({ partyId: selectedParty.id, ...taskForm, status: 'Pendente' });
       setTaskForm({ title: '', assignee: '', description: '' });
+      setTaskDialogOpen(false);
       pushToast('Tarefa criada', 'A nova etapa foi adicionada ao evento.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Não foi possível criar a tarefa.');
@@ -557,6 +602,11 @@ export function PlannerDashboard({
 
   async function handleMoveTask(taskId: string, status: string) {
     if (!selectedParty) {
+      return;
+    }
+
+    if (selectedPartyLocked) {
+      setActionError('Este evento já foi finalizado. Não é possível mover tarefas.');
       return;
     }
 
@@ -583,6 +633,11 @@ export function PlannerDashboard({
       return;
     }
 
+    if (selectedPartyLocked) {
+      setActionError('Este evento já foi finalizado. Não é possível editar tarefas.');
+      return;
+    }
+
     try {
       setActionError('');
       await updateTask.mutateAsync({
@@ -597,6 +652,28 @@ export function PlannerDashboard({
       pushToast('Tarefa atualizada', 'O card foi salvo com a descrição.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Não foi possível salvar a tarefa.');
+    }
+  }
+
+  async function handleDeleteTask(task: TaskItem) {
+    if (!selectedParty) {
+      return;
+    }
+
+    if (selectedPartyLocked) {
+      setActionError('Este evento já foi finalizado. Não é possível excluir tarefas.');
+      return;
+    }
+
+    try {
+      setActionError('');
+      await deleteTask.mutateAsync({ partyId: selectedParty.id, taskId: task.id });
+      if (editingTaskId === task.id) {
+        cancelTaskEdit();
+      }
+      pushToast('Tarefa removida', `"${task.title}" saiu do Kanban.`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível excluir a tarefa.');
     }
   }
 
@@ -638,6 +715,11 @@ export function PlannerDashboard({
       return;
     }
 
+    if (selectedPartyLocked) {
+      setActionError('Este evento já foi finalizado. Não é possível adicionar convidados.');
+      return;
+    }
+
     try {
       setActionError('');
       await createGuest.mutateAsync({ partyId: selectedParty.id, ...guestForm });
@@ -646,6 +728,25 @@ export function PlannerDashboard({
       pushToast('Convidado adicionado', 'A lista de presença foi atualizada.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Não foi possível adicionar o convidado.');
+    }
+  }
+
+  async function handleDeleteGuest(guest: Party['guests'][number]) {
+    if (!selectedParty) {
+      return;
+    }
+
+    if (selectedPartyLocked) {
+      setActionError('Este evento já foi finalizado. Não é possível excluir convidados.');
+      return;
+    }
+
+    try {
+      setActionError('');
+      await deleteGuest.mutateAsync({ partyId: selectedParty.id, guestId: guest.id });
+      pushToast('Convidado removido', `"${guest.name}" saiu da lista.`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível excluir o convidado.');
     }
   }
 
@@ -751,6 +852,11 @@ export function PlannerDashboard({
       return;
     }
 
+    if (selectedPartyLocked) {
+      setActionError('Este evento já foi finalizado. Não é possível adicionar despesas.');
+      return;
+    }
+
     try {
       setActionError('');
       await createBudgetItem.mutateAsync({
@@ -776,6 +882,11 @@ export function PlannerDashboard({
       return;
     }
 
+    if (selectedPartyLocked) {
+      setActionError('Este evento já foi finalizado. Não é possível editar despesas.');
+      return;
+    }
+
     try {
       setActionError('');
       await updateBudgetItem.mutateAsync({
@@ -795,6 +906,11 @@ export function PlannerDashboard({
 
   async function handleDeleteBudgetItem(item: Party['budget']['items'][number]) {
     if (!selectedParty) {
+      return;
+    }
+
+    if (selectedPartyLocked) {
+      setActionError('Este evento já foi finalizado. Não é possível excluir despesas.');
       return;
     }
 
@@ -818,16 +934,16 @@ export function PlannerDashboard({
     return (
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogTrigger asChild>
-          <Button className={hiddenTrigger ? 'hidden' : undefined} variant="premium">
+          <Button className={hiddenTrigger ? 'hidden' : undefined} onClick={() => !hiddenTrigger && openCreatePartyDialog()} variant="premium">
             <Plus size={18} />
-            Nova festa
+            {editingPartyId ? 'Editar festa' : 'Nova festa'}
           </Button>
         </DialogTrigger>
         <DialogContent className="md:top-1/2 max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-b-none">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-semibold">Criar nova festa</DialogTitle>
+            <DialogTitle className="text-2xl font-semibold">{editingPartyId ? 'Editar festa' : 'Criar nova festa'}</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-muted-foreground">
-              Defina os dados principais para o Celebra montar o card do evento.
+              {editingPartyId ? 'Atualize os dados principais do evento.' : 'Defina os dados principais para o Celebra montar o card do evento.'}
             </DialogDescription>
           </DialogHeader>
 
@@ -934,14 +1050,22 @@ export function PlannerDashboard({
               <span>Sem orçamento / Não definir orçamento agora</span>
             </label>
 
+            <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-slate-200">
+              <Checkbox
+                checked={partyForm.isFinalized}
+                onCheckedChange={(checked) => setPartyForm((current) => ({ ...current, isFinalized: checked === true }))}
+              />
+              <span>Evento finalizado</span>
+            </label>
+
             {actionError ? (
               <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
                 {actionError}
               </div>
             ) : null}
 
-            <Button disabled={createParty.isPending} size="lg" type="submit" variant="premium">
-              {createParty.isPending ? 'Criando...' : 'Criar festa'}
+            <Button disabled={createParty.isPending || updateParty.isPending} size="lg" type="submit" variant="premium">
+              {editingPartyId ? 'Salvar alterações' : createParty.isPending ? 'Criando...' : 'Criar festa'}
             </Button>
           </form>
         </DialogContent>
@@ -1002,17 +1126,31 @@ export function PlannerDashboard({
           </div>
         </div>
 
-        <span
-          className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
-          onClick={(event) => {
-            event.stopPropagation();
-            void handleTogglePartyFinalized(party);
-          }}
-          role="button"
-          tabIndex={0}
-        >
-          {party.isFinalized ? 'Reabrir evento' : 'Finalizar evento'}
-        </span>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <span
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              openEditPartyDialog(party);
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            <Edit3 size={15} />
+            Editar
+          </span>
+          <span
+            className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleTogglePartyFinalized(party);
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            {party.isFinalized ? 'Reabrir evento' : 'Finalizar evento'}
+          </span>
+        </div>
       </motion.button>
     );
   }
@@ -1046,7 +1184,7 @@ export function PlannerDashboard({
             <Sparkles className="absolute right-8 top-7 text-white/20" size={92} />
           </motion.section>
         ) : (
-          <EmptyState onCreate={() => setCreateOpen(true)} />
+          <EmptyState onCreate={openCreatePartyDialog} />
         )}
 
         <div className="grid gap-4 md:grid-cols-4">
@@ -1155,13 +1293,13 @@ export function PlannerDashboard({
     const tasks = party?.tasks.slice(0, 3) ?? [];
 
     return (
-      <div className="min-h-dvh w-full max-w-[100dvw] overflow-x-clip bg-[radial-gradient(circle_at_50%_-12%,rgba(37,99,235,0.16),transparent_32%),#020914] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-3 text-slate-50">
+      <div className="min-h-dvh w-full min-w-0 max-w-full overflow-x-clip bg-[radial-gradient(circle_at_50%_-12%,rgba(37,99,235,0.16),transparent_32%),#020914] px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-3 text-slate-50 sm:px-4">
         <header className="mb-5 flex min-w-0 items-center justify-between gap-3 overflow-hidden">
           <div className="flex min-w-0 items-center gap-3">
             <div className="grid h-11 w-11 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#5128ff,#f1329d)] text-white shadow-[0_14px_30px_rgba(127,34,230,0.32)]">
               <PartyPopper size={25} />
             </div>
-            <h1 className="min-w-0 truncate bg-[linear-gradient(135deg,#5b35ff_8%,#f1329d_92%)] bg-clip-text text-[1.78rem] font-extrabold leading-none tracking-[-0.04em] text-transparent">
+            <h1 className="min-w-0 truncate bg-[linear-gradient(135deg,#5b35ff_8%,#f1329d_92%)] bg-clip-text text-[1.55rem] font-extrabold leading-none text-transparent sm:text-[1.78rem]">
               Celebra
             </h1>
           </div>
@@ -1211,7 +1349,7 @@ export function PlannerDashboard({
           <div className="rounded-[28px] border border-white/10 bg-[#101a2d] p-6 text-center shadow-[0_14px_36px_rgba(0,0,0,0.28)]">
             <h2 className="text-2xl font-bold">Nenhuma festa cadastrada</h2>
             <p className="mt-2 text-slate-400">Crie sua primeira festa para ver o painel mobile.</p>
-            <Button className="mt-5" onClick={() => setCreateOpen(true)} variant="premium">
+            <Button className="mt-5" onClick={openCreatePartyDialog} variant="premium">
               <Plus size={18} />
               Criar festa
             </Button>
@@ -1269,7 +1407,7 @@ export function PlannerDashboard({
               <div className="grid gap-1">
                 {tasks.map((task, index) => (
                   <div
-                    className="grid grid-cols-[50px_1fr_auto] items-center gap-3 border-b border-[#14233b] py-3 last:border-b-0"
+                    className="grid grid-cols-[50px_1fr] items-center gap-3 border-b border-[#14233b] py-3 last:border-b-0"
                     key={task.id}
                   >
                     <div
@@ -1284,16 +1422,8 @@ export function PlannerDashboard({
                     </div>
                     <div className="min-w-0">
                       <strong className="block truncate text-[1rem]">{task.title}</strong>
-                      <span className="text-sm text-[#8588a6]">{task.done ? 'Concluída' : task.status || 'Pendente'}</span>
+                      <span className="text-sm text-[#8588a6]">{normalizeTaskStatus(task.status, task.done)}</span>
                     </div>
-                    <span
-                      className={cn(
-                        'rounded-full px-3 py-2 text-sm font-bold',
-                        task.done ? 'bg-[#dff7e9] text-[#22a35a]' : 'bg-[#fce2f0] text-[#ef3f98]'
-                      )}
-                    >
-                      {task.done ? 'Concluída' : 'Pendente'}
-                    </span>
                   </div>
                 ))}
                 {tasks.length === 0 ? (
@@ -1381,7 +1511,15 @@ export function PlannerDashboard({
                 </div>
               </div>
               <div className="absolute right-2.5 top-2.5 grid gap-2">
-                <button className="grid h-9 w-9 place-items-center rounded-lg border border-[#7c3cff]/40 bg-[#2a0f3d]/70 text-[#c15cff]" type="button">
+                <button
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-[#7c3cff]/40 bg-[#2a0f3d]/70 text-[#c15cff]"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    openEditPartyDialog(party);
+                  }}
+                  type="button"
+                  title="Editar evento"
+                >
                   <Edit3 size={18} />
                 </button>
                 <button
@@ -1402,7 +1540,7 @@ export function PlannerDashboard({
         <button
           className="mt-1 flex h-14 w-full items-center justify-center gap-3 rounded-[14px] bg-[linear-gradient(90deg,#5128ff,#ef3f98)] text-xl font-bold text-white"
           type="button"
-          onClick={() => setCreateOpen(true)}
+          onClick={openCreatePartyDialog}
         >
           <Plus size={24} />
           Novo evento
@@ -1414,12 +1552,12 @@ export function PlannerDashboard({
 
   function renderMobileGuests() {
     return (
-      <MobilePage title="Convidados" action={renderCreatePartyDialog()} headerAction={renderMobileHeaderActions()}>
+      <MobilePage title="Convidados" action={null} headerAction={renderMobileHeaderActions()}>
         {renderMobilePartySelector()}
         {renderMobileGuestDialog()}
         <Button
           className="h-12 rounded-[16px] bg-[linear-gradient(90deg,#0fb7ef,#5128ff,#ef3f98)] text-white"
-          disabled={!selectedParty}
+          disabled={!selectedParty || selectedPartyLocked}
           onClick={() => setGuestDialogOpen(true)}
           type="button"
         >
@@ -1497,6 +1635,15 @@ export function PlannerDashboard({
                       <WhatsappIcon size={14} />
                     </a>
                   ) : null}
+                  <button
+                    className="grid h-8 w-8 place-items-center rounded-full border border-rose-400/30 bg-rose-400/10 text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={selectedPartyLocked || deleteGuest.isPending}
+                    onClick={() => void handleDeleteGuest(guest)}
+                    type="button"
+                    title="Excluir convidado"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             </div>
@@ -1509,12 +1656,19 @@ export function PlannerDashboard({
   function renderTaskEditForm(task: TaskItem, compact = false) {
     return (
       <div className="grid gap-2">
+        {selectedPartyLocked ? (
+          <p className="rounded-md border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+            Evento finalizado. Este card não pode mais ser alterado.
+          </p>
+        ) : null}
         <Input
+          disabled={selectedPartyLocked}
           required
           value={editingTaskForm.title}
           onChange={(event) => setEditingTaskForm((current) => ({ ...current, title: event.target.value }))}
         />
         <Input
+          disabled={selectedPartyLocked}
           placeholder="Responsável"
           value={editingTaskForm.assignee}
           onChange={(event) => setEditingTaskForm((current) => ({ ...current, assignee: event.target.value }))}
@@ -1524,13 +1678,14 @@ export function PlannerDashboard({
             'w-full rounded-md border border-input bg-input px-3 py-2 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring',
             compact ? 'min-h-[76px]' : 'min-h-[96px]'
           )}
+          disabled={selectedPartyLocked}
           maxLength={500}
           placeholder="Descrição"
           value={editingTaskForm.description}
           onChange={(event) => setEditingTaskForm((current) => ({ ...current, description: event.target.value }))}
         />
         <div className="flex items-center gap-2">
-          <Button disabled={updateTask.isPending || !editingTaskForm.title.trim()} onClick={() => void handleSaveTask(task)} size="sm" type="button" variant="premium">
+          <Button disabled={selectedPartyLocked || updateTask.isPending || !editingTaskForm.title.trim()} onClick={() => void handleSaveTask(task)} size="sm" type="button" variant="premium">
             <CheckCheck size={15} />
             Salvar
           </Button>
@@ -1543,11 +1698,98 @@ export function PlannerDashboard({
     );
   }
 
+  function renderTaskPreviewDialog() {
+    return (
+      <Dialog open={Boolean(viewingTask)} onOpenChange={(open) => !open && setViewingTask(null)}>
+        <DialogContent className="max-w-lg md:top-1/2 max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-b-none">
+          <DialogHeader>
+            <DialogTitle className="whitespace-normal break-words text-2xl font-semibold leading-tight">{viewingTask?.title}</DialogTitle>
+            <DialogDescription>
+              {viewingTask ? normalizeTaskStatus(viewingTask.status, viewingTask.done) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          {viewingTask ? (
+            <div className="grid gap-4 text-sm">
+              <div className="rounded-lg border border-border bg-muted/35 p-3">
+                <span className="text-muted-foreground">Responsável</span>
+                <strong className="mt-1 block text-foreground">{viewingTask.assignee || 'Sem responsável'}</strong>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/35 p-3">
+                <span className="text-muted-foreground">Descrição</span>
+                <p className="mt-2 whitespace-pre-wrap leading-6 text-foreground">
+                  {viewingTask.description || 'Sem descrição cadastrada.'}
+                </p>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  function renderCreateTaskDialog() {
+    return (
+      <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+        <DialogTrigger asChild>
+          <Button disabled={!selectedParty || selectedPartyLocked} variant="premium">
+            <Plus size={18} />
+            Nova tarefa
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-h-[88dvh] overflow-y-auto md:top-1/2 max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-b-none">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold">Nova tarefa</DialogTitle>
+            <DialogDescription className="text-sm leading-6 text-muted-foreground">
+              Crie um card para a festa selecionada.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form className="grid gap-3" onSubmit={handleCreateTask}>
+            <Field label="Título">
+              <Input
+                placeholder="Ex.: Confirmar fornecedores"
+                required
+                value={taskForm.title}
+                onChange={(event) => setTaskForm((current) => ({ ...current, title: event.target.value }))}
+              />
+            </Field>
+            <Field label="Responsável">
+              <Input
+                placeholder="Ex.: Leonardo"
+                value={taskForm.assignee}
+                onChange={(event) => setTaskForm((current) => ({ ...current, assignee: event.target.value }))}
+              />
+            </Field>
+            <Field label="Descrição">
+              <textarea
+                className="min-h-[112px] w-full rounded-md border border-input bg-input px-3 py-2 text-sm text-foreground outline-none transition focus-visible:ring-2 focus-visible:ring-ring"
+                maxLength={500}
+                placeholder="Detalhes do card"
+                value={taskForm.description}
+                onChange={(event) => setTaskForm((current) => ({ ...current, description: event.target.value }))}
+              />
+            </Field>
+            <Button disabled={!selectedParty || selectedPartyLocked || createTask.isPending} type="submit" variant="premium">
+              <ClipboardCheck size={17} />
+              Salvar tarefa
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   function renderMobileTasks() {
     return (
-      <MobilePage title="Tarefas" action={renderCreatePartyDialog()} headerAction={renderMobileHeaderActions()}>
+      <MobilePage title="Tarefas" action={renderCreateTaskDialog()} headerAction={renderMobileHeaderActions()}>
+        {renderTaskPreviewDialog()}
         {renderMobilePartySelector()}
         <div className="grid gap-3">
+          {selectedPartyLocked ? (
+            <p className="rounded-[18px] border border-amber-300/20 bg-amber-400/10 p-3 text-sm font-semibold text-amber-100">
+              Evento finalizado automaticamente. Novas tarefas, despesas e convidados estão bloqueados.
+            </p>
+          ) : null}
           {taskColumns.map((column) => {
             const tasks = (selectedParty?.tasks ?? []).filter((task) => normalizeTaskStatus(task.status, task.done) === column.id);
 
@@ -1557,28 +1799,42 @@ export function PlannerDashboard({
                   <h2 className="text-base font-bold text-slate-50">{column.label}</h2>
                   <span className={cn('rounded-full border px-2.5 py-1 text-xs font-bold', column.tone)}>{tasks.length}</span>
                 </div>
-                <div className="grid gap-2.5">
+                <div className="grid max-h-[390px] gap-2.5 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:thin]">
                   {tasks.map((task) => (
                     <article className="rounded-[16px] border border-white/10 bg-[#071225] p-3 shadow-[0_10px_24px_rgba(0,0,0,0.22)]" key={task.id}>
                       {editingTaskId === task.id ? (
                         renderTaskEditForm(task, true)
                       ) : (
                         <>
-                          <div className="flex items-start gap-3">
+                          <div className="grid min-w-0 grid-cols-[40px_minmax(0,1fr)_auto] items-start gap-3">
                             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[linear-gradient(135deg,#5128ff,#ef3f98)] text-white">
                               <ClipboardCheck size={19} />
                             </span>
                             <div className="min-w-0 flex-1">
                               <strong className="block truncate text-slate-50">{task.title}</strong>
-                              <small className="text-sm text-slate-400">{task.assignee || 'Sem responsável'}</small>
+                              <small className="block truncate text-sm text-slate-400">{task.assignee || 'Sem responsável'}</small>
                               {task.description ? <p className="mt-2 line-clamp-3 text-sm text-slate-300">{task.description}</p> : null}
                             </div>
-                            <Button className="h-9 w-9 shrink-0 px-0" onClick={() => startTaskEdit(task)} type="button" variant="outline">
-                              <Edit3 size={15} />
-                            </Button>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <Button className="h-8 w-8 px-0" onClick={() => setViewingTask(task)} type="button" variant="outline">
+                                <Eye size={14} />
+                              </Button>
+                              <Button className="h-8 w-8 px-0" disabled={selectedPartyLocked} onClick={() => startTaskEdit(task)} type="button" variant="outline">
+                                <Edit3 size={14} />
+                              </Button>
+                              <button
+                                className="grid h-8 w-8 place-items-center rounded-md border border-white/10 bg-white/5 text-slate-400 transition hover:border-rose-400/30 hover:bg-rose-400/10 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={selectedPartyLocked || deleteTask.isPending}
+                                onClick={() => void handleDeleteTask(task)}
+                                type="button"
+                                title="Excluir tarefa"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
                           </div>
                           <div className="mt-3">
-                            <Select value={normalizeTaskStatus(task.status, task.done)} onValueChange={(value) => void handleMoveTask(task.id, value)}>
+                            <Select disabled={selectedPartyLocked} value={normalizeTaskStatus(task.status, task.done)} onValueChange={(value) => void handleMoveTask(task.id, value)}>
                               <SelectTrigger className="h-10">
                                 <SelectValue placeholder="Mover para" />
                               </SelectTrigger>
@@ -1618,6 +1874,11 @@ export function PlannerDashboard({
 
         {selectedParty ? (
           <>
+            {selectedPartyLocked ? (
+              <p className="rounded-[18px] border border-amber-300/20 bg-amber-400/10 p-3 text-sm font-semibold text-amber-100">
+                Evento finalizado automaticamente. Despesas não podem mais ser criadas ou alteradas.
+              </p>
+            ) : null}
             <section className="rounded-[20px] border border-[#14233b] bg-[linear-gradient(145deg,rgba(10,22,39,0.96),rgba(5,13,28,0.98))] p-3.5">
               <h2 className="text-lg font-bold text-white">{selectedParty.name}</h2>
               <div className="mt-4 grid grid-cols-2 gap-3">
@@ -1664,7 +1925,7 @@ export function PlannerDashboard({
                   value={budgetForm.amount}
                   onChange={(event) => setBudgetForm((current) => ({ ...current, amount: formatCurrencyInput(event.target.value) }))}
                 />
-                <Button disabled={createBudgetItem.isPending} type="submit" variant="premium">
+                <Button disabled={selectedPartyLocked || createBudgetItem.isPending} type="submit" variant="premium">
                   Salvar despesa
                 </Button>
               </form>
@@ -1692,6 +1953,7 @@ export function PlannerDashboard({
                       {editingBudgetItemId === item.id ? (
                         <button
                           className="grid h-10 w-10 place-items-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                          disabled={selectedPartyLocked}
                           onClick={() => void handleUpdateBudgetItem(item)}
                           type="button"
                         >
@@ -1700,6 +1962,7 @@ export function PlannerDashboard({
                       ) : (
                         <button
                           className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/10 text-slate-200"
+                          disabled={selectedPartyLocked}
                           onClick={() => startBudgetItemEdit(item)}
                           type="button"
                         >
@@ -1708,6 +1971,7 @@ export function PlannerDashboard({
                       )}
                       <button
                         className="grid h-10 w-10 place-items-center rounded-full border border-rose-400/30 bg-rose-400/10 text-rose-200"
+                        disabled={selectedPartyLocked}
                         onClick={() => void handleDeleteBudgetItem(item)}
                         type="button"
                       >
@@ -1794,16 +2058,22 @@ export function PlannerDashboard({
                   <MetricPanel label="Gasto atual" value={currencyFormatter.format(selectedParty.budget.spent)} />
                   <MetricPanel label="Convidados" value={`${selectedParty.guests.length}/${selectedParty.expectedGuests}`} />
                 </div>
-                <Button
-                  className="w-full md:w-fit"
-                  disabled={updateParty.isPending}
-                  onClick={() => void handleTogglePartyFinalized(selectedParty)}
-                  type="button"
-                  variant={selectedParty.isFinalized ? 'outline' : 'premium'}
-                >
-                  <CheckCheck size={17} />
-                  {selectedParty.isFinalized ? 'Reabrir evento' : 'Marcar como finalizado'}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button className="w-full md:w-fit" onClick={() => openEditPartyDialog(selectedParty)} type="button" variant="outline">
+                    <Edit3 size={17} />
+                    Editar evento
+                  </Button>
+                  <Button
+                    className="w-full md:w-fit"
+                    disabled={updateParty.isPending}
+                    onClick={() => void handleTogglePartyFinalized(selectedParty)}
+                    type="button"
+                    variant={selectedParty.isFinalized ? 'outline' : 'premium'}
+                  >
+                    <CheckCheck size={17} />
+                    {selectedParty.isFinalized ? 'Reabrir evento' : 'Marcar como finalizado'}
+                  </Button>
+                </div>
                 {selectedParty.location ? (
                   <a
                     className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-md border border-border px-4 text-sm font-semibold transition-colors hover:bg-white/10 md:w-fit"
@@ -1868,6 +2138,7 @@ export function PlannerDashboard({
   function renderGuests() {
     return (
       <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
+        {renderTaskPreviewDialog()}
         <Card>
           <CardHeader>
             <CardTitle>Convidados</CardTitle>
@@ -1940,6 +2211,16 @@ export function PlannerDashboard({
                         WhatsApp
                       </a>
                     ) : null}
+                    <Button
+                      disabled={selectedPartyLocked || deleteGuest.isPending}
+                      onClick={() => void handleDeleteGuest(guest)}
+                      size="sm"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2 size={15} />
+                      Excluir
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -1953,6 +2234,11 @@ export function PlannerDashboard({
             <CardDescription>Entrada rápida para o evento selecionado.</CardDescription>
           </CardHeader>
           <CardContent>
+            {selectedPartyLocked ? (
+              <p className="mb-4 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3 text-sm font-semibold text-amber-100">
+                Evento finalizado automaticamente. Não é possível adicionar convidados.
+              </p>
+            ) : null}
             <form className="grid gap-3" onSubmit={handleCreateGuest}>
               <Field label="Nome">
                 <Input required value={guestForm.name} onChange={(event) => setGuestForm((current) => ({ ...current, name: event.target.value }))} />
@@ -1971,7 +2257,7 @@ export function PlannerDashboard({
                   onChange={(event) => setGuestForm((current) => ({ ...current, phoneNumber: formatBrazilPhoneInput(event.target.value) }))}
                 />
               </Field>
-              <Button disabled={!selectedParty || createGuest.isPending} type="submit" variant="premium">
+              <Button disabled={!selectedParty || selectedPartyLocked || createGuest.isPending} type="submit" variant="premium">
                 Adicionar
               </Button>
             </form>
@@ -1983,7 +2269,7 @@ export function PlannerDashboard({
 
   function renderExpenses() {
     if (!selectedParty) {
-      return <EmptyState onCreate={() => setCreateOpen(true)} />;
+      return <EmptyState onCreate={openCreatePartyDialog} />;
     }
 
     const hasBudgetCeiling = selectedParty.budget.estimated !== null && selectedParty.budget.estimated > 0;
@@ -1999,6 +2285,11 @@ export function PlannerDashboard({
             <CardDescription>{selectedParty.name}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
+            {selectedPartyLocked ? (
+              <p className="rounded-lg border border-amber-300/20 bg-amber-400/10 p-3 text-sm font-semibold text-amber-100">
+                Evento finalizado automaticamente. Despesas não podem mais ser criadas ou alteradas.
+              </p>
+            ) : null}
             <div className="grid gap-3 md:grid-cols-3">
               <MetricPanel label="Orçamento" value={hasBudgetCeiling ? currencyFormatter.format(selectedParty.budget.estimated ?? 0) : 'Sem teto'} />
               <MetricPanel label="Gasto atual" value={currencyFormatter.format(selectedParty.budget.spent)} />
@@ -2045,7 +2336,7 @@ export function PlannerDashboard({
                       )}
                       {editingBudgetItemId === item.id ? (
                         <Button
-                          disabled={updateBudgetItem.isPending}
+                          disabled={selectedPartyLocked || updateBudgetItem.isPending}
                           onClick={() => void handleUpdateBudgetItem(item)}
                           size="sm"
                           type="button"
@@ -2055,13 +2346,13 @@ export function PlannerDashboard({
                           Salvar
                         </Button>
                       ) : (
-                        <Button onClick={() => startBudgetItemEdit(item)} size="sm" type="button" variant="outline">
+                        <Button disabled={selectedPartyLocked} onClick={() => startBudgetItemEdit(item)} size="sm" type="button" variant="outline">
                           <Edit3 size={15} />
                           Editar
                         </Button>
                       )}
                       <Button
-                        disabled={deleteBudgetItem.isPending}
+                        disabled={selectedPartyLocked || deleteBudgetItem.isPending}
                         onClick={() => void handleDeleteBudgetItem(item)}
                         size="sm"
                         type="button"
@@ -2088,6 +2379,11 @@ export function PlannerDashboard({
             <CardDescription>{hasBudgetCeiling ? 'Controle o consumo do orçamento.' : 'Evento sem teto de orçamento.'}</CardDescription>
           </CardHeader>
           <CardContent>
+            {selectedPartyLocked ? (
+              <p className="mb-4 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3 text-sm font-semibold text-amber-100">
+                Evento finalizado. Não é possível adicionar despesas.
+              </p>
+            ) : null}
             <form className="grid gap-3" onSubmit={handleCreateBudgetItem}>
               <Field label="Descrição">
                 <Input required value={budgetForm.label} onChange={(event) => setBudgetForm((current) => ({ ...current, label: event.target.value }))} />
@@ -2115,7 +2411,7 @@ export function PlannerDashboard({
                   onChange={(event) => setBudgetForm((current) => ({ ...current, amount: formatCurrencyInput(event.target.value) }))}
                 />
               </Field>
-              <Button disabled={createBudgetItem.isPending} type="submit" variant="premium">
+              <Button disabled={selectedPartyLocked || createBudgetItem.isPending} type="submit" variant="premium">
                 <CircleDollarSign size={17} />
                 Salvar despesa
               </Button>
@@ -2135,6 +2431,11 @@ export function PlannerDashboard({
             <CardDescription>Mova as tarefas entre as etapas da festa selecionada.</CardDescription>
           </CardHeader>
           <CardContent>
+            {selectedPartyLocked ? (
+              <p className="mb-4 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3 text-sm font-semibold text-amber-100">
+                Evento finalizado automaticamente. Não é possível mover ou criar tarefas.
+              </p>
+            ) : null}
             {selectedParty ? (
               <div className="grid gap-3 xl:grid-cols-3">
                 {taskColumns.map((column) => {
@@ -2148,13 +2449,17 @@ export function PlannerDashboard({
                       )}
                       key={column.id}
                       onDragOver={handleTaskDragOver}
-                      onDrop={(event) => handleTaskDrop(event, column.id)}
+                      onDrop={(event) => {
+                        if (!selectedPartyLocked) {
+                          handleTaskDrop(event, column.id);
+                        }
+                      }}
                     >
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <h3 className="font-semibold">{column.label}</h3>
                         <Badge className={column.tone}>{tasks.length}</Badge>
                       </div>
-                      <div className="grid gap-3">
+                      <div className="grid max-h-[504px] gap-3 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:thin]">
                         {tasks.map((task) => {
                           return (
                             <motion.article
@@ -2162,25 +2467,40 @@ export function PlannerDashboard({
                                 'cursor-grab rounded-lg border border-border bg-card p-4 shadow-sm active:cursor-grabbing',
                                 draggingTaskId === task.id && 'opacity-55'
                               )}
-                              draggable
+                              draggable={!selectedPartyLocked}
                               key={task.id}
                               layout
                               onDragEnd={() => setDraggingTaskId('')}
-                              onDragStart={(event) => handleTaskDragStart(event as unknown as React.DragEvent<HTMLElement>, task.id)}
+                              onDragStart={(event) => {
+                                if (!selectedPartyLocked) {
+                                  handleTaskDragStart(event as unknown as React.DragEvent<HTMLElement>, task.id);
+                                }
+                              }}
                               transition={{ duration: 0.16 }}
                             >
                               {editingTaskId === task.id ? renderTaskEditForm(task) : null}
-                              <div className={cn('flex items-start justify-between gap-3', editingTaskId === task.id && 'hidden')}>
-                                <div className="min-w-0">
+                              <div className={cn('grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3', editingTaskId === task.id && 'hidden')}>
+                                <div className="min-w-0 flex-1">
                                   <strong className="block truncate">{task.title}</strong>
-                                  <p className="mt-1 text-sm text-muted-foreground">Responsável: {task.assignee || 'Sem responsável'}</p>
+                                  <p className="mt-1 truncate text-sm text-muted-foreground">Responsável: {task.assignee || 'Sem responsável'}</p>
                                   {task.description ? <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">{task.description}</p> : null}
                                 </div>
-                                <div className="flex shrink-0 items-center gap-2">
-                                  <Button className="h-9 w-9 px-0" onClick={() => startTaskEdit(task)} type="button" variant="outline">
-                                    <Edit3 size={15} />
+                                <div className="flex shrink-0 items-center gap-1.5">
+                                  <Button className="h-8 w-8 px-0" onClick={() => setViewingTask(task)} type="button" variant="outline">
+                                    <Eye size={14} />
                                   </Button>
-                                  <ClipboardCheck className="text-sky-200" size={19} />
+                                  <Button className="h-8 w-8 px-0" disabled={selectedPartyLocked} onClick={() => startTaskEdit(task)} type="button" variant="outline">
+                                    <Edit3 size={14} />
+                                  </Button>
+                                  <Button
+                                    className="h-8 w-8 px-0 text-slate-400 hover:text-rose-200"
+                                    disabled={selectedPartyLocked || deleteTask.isPending}
+                                    onClick={() => void handleDeleteTask(task)}
+                                    type="button"
+                                    variant="outline"
+                                  >
+                                    <X size={14} />
+                                  </Button>
                                 </div>
                               </div>
                               <p className={cn('mt-4 rounded-md border border-border bg-muted/40 px-3 py-2 text-center text-xs font-semibold text-muted-foreground', editingTaskId === task.id && 'hidden')}>
@@ -2211,6 +2531,11 @@ export function PlannerDashboard({
             <CardDescription>Crie uma próxima ação para a festa ativa.</CardDescription>
           </CardHeader>
           <CardContent>
+            {selectedPartyLocked ? (
+              <p className="mb-4 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3 text-sm font-semibold text-amber-100">
+                Evento finalizado. Não é possível adicionar tarefas.
+              </p>
+            ) : null}
             <form className="grid gap-3" onSubmit={handleCreateTask}>
               <Field label="Título">
                 <Input required value={taskForm.title} onChange={(event) => setTaskForm((current) => ({ ...current, title: event.target.value }))} />
@@ -2226,7 +2551,7 @@ export function PlannerDashboard({
                   onChange={(event) => setTaskForm((current) => ({ ...current, description: event.target.value }))}
                 />
               </Field>
-              <Button disabled={!selectedParty || createTask.isPending} type="submit" variant="premium">
+              <Button disabled={!selectedParty || selectedPartyLocked || createTask.isPending} type="submit" variant="premium">
                 Salvar tarefa
               </Button>
             </form>
@@ -2428,7 +2753,7 @@ export function PlannerDashboard({
               />
             </Field>
 
-            <Button disabled={!selectedParty || createGuest.isPending} type="submit" variant="premium">
+            <Button disabled={!selectedParty || selectedPartyLocked || createGuest.isPending} type="submit" variant="premium">
               <Plus size={18} />
               Adicionar convidado
             </Button>
@@ -2513,7 +2838,7 @@ export function PlannerDashboard({
 
   return (
     <ToastProvider swipeDirection="right">
-      <div className="min-h-screen max-w-[100dvw] overflow-x-hidden px-0 py-0 lg:max-w-none lg:px-4 lg:py-4">
+      <div className="min-h-screen max-w-full overflow-x-clip px-0 py-0 lg:max-w-none lg:px-4 lg:py-4">
         <div className="mx-auto max-w-none">
           <aside className="fixed left-4 top-4 hidden h-[calc(100vh-2rem)] w-[260px] rounded-lg border border-border bg-card/80 p-4 shadow-2xl backdrop-blur-xl lg:grid lg:content-between">
             <div>
@@ -2678,22 +3003,22 @@ function MobilePage({
   title: string;
 }) {
   return (
-    <div className="min-h-dvh w-full max-w-[100dvw] overflow-x-clip bg-[#020914] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 text-slate-50">
-      <header className="mb-5 grid min-w-0 gap-5 overflow-hidden">
+    <div className="min-h-dvh w-full min-w-0 max-w-full overflow-x-clip bg-[#020914] px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-4 text-slate-50 sm:px-4 sm:pt-5">
+      <header className="mb-4 grid min-w-0 gap-4 overflow-hidden sm:mb-5 sm:gap-5">
         <div className="flex min-w-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#5128ff,#f1329d)]">
-              <PartyPopper size={25} />
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[13px] bg-[linear-gradient(135deg,#5128ff,#f1329d)] sm:h-11 sm:w-11 sm:rounded-[14px]">
+              <PartyPopper size={23} />
             </div>
-            <strong className="min-w-0 truncate bg-[linear-gradient(135deg,#5b35ff_8%,#f1329d_92%)] bg-clip-text text-[1.78rem] font-extrabold leading-none text-transparent">
+            <strong className="min-w-0 truncate bg-[linear-gradient(135deg,#5b35ff_8%,#f1329d_92%)] bg-clip-text text-[1.55rem] font-extrabold leading-none text-transparent sm:text-[1.78rem]">
               Celebra
             </strong>
           </div>
           <div className="shrink-0">{headerAction}</div>
         </div>
         <div>
-          <h1 className="truncate text-4xl font-bold">{title}</h1>
-          {subtitle ? <p className="mt-2 text-lg text-slate-300">{subtitle}</p> : null}
+          <h1 className="truncate text-[2rem] font-bold leading-tight sm:text-4xl">{title}</h1>
+          {subtitle ? <p className="mt-2 text-base text-slate-300 sm:text-lg">{subtitle}</p> : null}
         </div>
         <div className="shrink-0">{action}</div>
       </header>

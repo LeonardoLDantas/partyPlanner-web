@@ -109,6 +109,16 @@ export function useDashboardData(enabled: boolean) {
     }
   });
 
+  const deleteTask = useMutation({
+    mutationFn: async (variables: { partyId: string; taskId: string }) =>
+      container.partyRepository.deleteTask(variables.partyId, variables.taskId),
+    onSuccess: (updatedParty) => {
+      queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
+        syncPartyIntoDashboard(current, updatedParty)
+      );
+    }
+  });
+
   const createGuest = useMutation({
     mutationFn: async (variables: { partyId: string; name: string; group: string; email?: string; phoneNumber?: string }) =>
       container.partyRepository.createGuest(variables.partyId, {
@@ -117,6 +127,16 @@ export function useDashboardData(enabled: boolean) {
         email: variables.email,
         phoneNumber: variables.phoneNumber
       }),
+    onSuccess: (updatedParty) => {
+      queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
+        syncPartyIntoDashboard(current, updatedParty)
+      );
+    }
+  });
+
+  const deleteGuest = useMutation({
+    mutationFn: async (variables: { partyId: string; guestId: string }) =>
+      container.partyRepository.deleteGuest(variables.partyId, variables.guestId),
     onSuccess: (updatedParty) => {
       queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
         syncPartyIntoDashboard(current, updatedParty)
@@ -178,7 +198,9 @@ export function useDashboardData(enabled: boolean) {
     updateParty,
     createTask,
     updateTask,
+    deleteTask,
     createGuest,
+    deleteGuest,
     createBudgetItem,
     updateBudgetItem,
     deleteBudgetItem,
