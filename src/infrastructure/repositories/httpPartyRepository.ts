@@ -4,6 +4,7 @@ import type {
   CreatePartyInput,
   CreateTaskInput,
   PartyRepository,
+  UpdateTaskInput,
   UpdatePartyInput
 } from '@/domain/ports/partyRepository';
 import type { Party } from '@/domain/entities/party';
@@ -37,6 +38,13 @@ export class HttpPartyRepository implements PartyRepository {
     });
   }
 
+  updateTask(partyId: string, taskId: string, input: UpdateTaskInput) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input)
+    });
+  }
+
   createGuest(partyId: string, input: CreateGuestInput) {
     return this.httpClient.request<Party>(`/api/parties/${partyId}/guests`, {
       method: 'POST',
@@ -51,9 +59,33 @@ export class HttpPartyRepository implements PartyRepository {
     });
   }
 
+  updateBudgetItem(partyId: string, budgetItemId: string, input: CreateBudgetItemInput) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/budget-items/${budgetItemId}`, {
+      method: 'PUT',
+      body: JSON.stringify(input)
+    });
+  }
+
+  deleteBudgetItem(partyId: string, budgetItemId: string) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/budget-items/${budgetItemId}`, {
+      method: 'DELETE'
+    });
+  }
+
   toggleTask(partyId: string, taskId: string) {
     return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks/${taskId}/toggle`, {
       method: 'PATCH'
+    });
+  }
+
+  getInvitation(token: string) {
+    return this.httpClient.request<import('@/domain/entities/party').Invitation>(`/api/invitations/${token}`);
+  }
+
+  respondInvitation(token: string, status: 'Confirmado' | 'Recusou') {
+    return this.httpClient.request<import('@/domain/entities/party').Invitation>(`/api/invitations/${token}/respond`, {
+      method: 'POST',
+      body: JSON.stringify({ status })
     });
   }
 }

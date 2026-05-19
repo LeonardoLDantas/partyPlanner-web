@@ -1,23 +1,16 @@
-import {
-  Button,
-  Paper,
-  PasswordInput,
-  SegmentedControl,
-  Stack,
-  Text,
-  TextInput,
-  ThemeIcon,
-  Title
-} from '@mantine/core';
-import { useMediaQuery } from '@mantine/hooks';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ArrowRight, BadgeCheck, CakeSlice, Sparkles } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowRight, BadgeCheck, CakeSlice } from 'lucide-react';
 import { z } from 'zod';
 
 import type { AuthSession } from '@/domain/entities/auth';
 import { container } from '@/infrastructure/container';
+import { Button } from '@/presentation/components/ui/button';
+import { Card } from '@/presentation/components/ui/card';
+import { Field, Input } from '@/presentation/components/ui/input';
+import { Tabs, TabsList, TabsTrigger } from '@/presentation/components/ui/tabs';
 
 const authSchema = z.object({
   email: z.string().email('Informe um e-mail valido.'),
@@ -34,7 +27,6 @@ type AuthPageProps = {
 export function AuthPage({ onAuthenticated }: AuthPageProps) {
   const [mode, setMode] = useState<AuthMode>('login');
   const [errorMessage, setErrorMessage] = useState('');
-  const isMobile = useMediaQuery('(max-width: 48em)');
   const schema = useMemo(() => authSchema, []);
 
   const form = useForm<z.infer<typeof authSchema>>({
@@ -69,112 +61,115 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
       await onAuthenticated(session);
     } catch (error) {
       setErrorMessage(
-        error instanceof Error ? error.message : 'Nao foi possivel autenticar agora.'
+        error instanceof Error ? error.message : 'Não foi possível autenticar agora.'
       );
     }
   }
 
   return (
-    <main className="auth-layout auth-layout-single">
-      <section className="auth-hero card-dark auth-mobile-hero auth-mobile-hero-clean auth-hero-with-form">
-        <div className="auth-logo-wrap">
-          <img alt="Celebra" className="auth-brand-image auth-brand-image-light" src="/brand/celebra-mark-white.png" />
-          <img alt="Celebra" className="auth-brand-image auth-brand-image-dark" src="/brand/celebra-mark-white.png" />
-        </div>
-
-        <Paper className="auth-form card-light auth-mobile-panel auth-mobile-panel-embedded" p="xl" radius="xl" shadow="sm" withBorder>
-          <Stack gap="lg">
+    <main className="grid min-h-screen place-items-center px-4 py-8">
+      <motion.section
+        animate={{ opacity: 1, y: 0 }}
+        className="grid w-full max-w-5xl gap-5 lg:grid-cols-[1fr_430px]"
+        initial={{ opacity: 0, y: 16 }}
+        transition={{ duration: 0.24, ease: 'easeOut' }}
+      >
+        <div className="relative overflow-hidden rounded-lg border border-white/10 bg-[linear-gradient(135deg,rgba(14,116,144,0.82),rgba(30,41,59,0.94)_46%,rgba(147,51,234,0.76))] p-6 shadow-2xl md:p-8">
+          <div className="relative z-10 grid h-full content-between gap-10">
             <div>
-              <Text className="eyebrow">Acesso rapido</Text>
-              <Title order={isMobile ? 3 : 2}>
-                {mode === 'login' ? 'Entrar na sua conta' : 'Criar conta no Celebra'}
-              </Title>
-              <Text c="dimmed" mt={6} size="sm">
-                {mode === 'login'
-                  ? 'Use seu e-mail e senha para continuar no painel mobile.'
-                  : 'Cadastre-se e ja entre direto no app para criar sua primeira festa.'}
-              </Text>
+              <img alt="Celebra" className="h-20 w-20 rounded-full object-contain" src="/brand/celebra-mark-white.png" />
+              <p className="mt-8 text-sm font-semibold uppercase tracking-[0.18em] text-sky-100">
+                PWA premium
+              </p>
+              <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-tight text-white md:text-6xl">
+                Planeje festas com ritmo, brilho e controle.
+              </h1>
+              <p className="mt-5 max-w-xl text-base leading-7 text-slate-100/82">
+                Um painel escuro e elegante para organizar eventos, convidados, tarefas e custos no mesmo lugar.
+              </p>
             </div>
 
-            <SegmentedControl
-              className="auth-segmented"
-              data={[
-                { label: 'Entrar', value: 'login' },
-                { label: 'Criar conta', value: 'register' }
-              ]}
-              fullWidth
-              radius="xl"
-              value={mode}
-              onChange={(value) => setMode(value as AuthMode)}
-            />
-
-            <form className="auth-form-stack" onSubmit={form.handleSubmit(handleSubmit)}>
-              <Stack gap="md">
-                {mode === 'register' ? (
-                  <TextInput
-                    label="Nome"
-                    placeholder="Seu nome"
-                    radius="xl"
-                    size="md"
-                    {...form.register('name')}
-                    error={form.formState.errors.name?.message}
-                  />
-                ) : null}
-
-                <TextInput
-                  label="E-mail"
-                  placeholder="voce@celebra.app"
-                  radius="xl"
-                  size="md"
-                  type="email"
-                  {...form.register('email')}
-                  error={form.formState.errors.email?.message}
-                />
-
-                <PasswordInput
-                  label="Senha"
-                  placeholder="Sua senha"
-                  radius="xl"
-                  size="md"
-                  {...form.register('password')}
-                  error={form.formState.errors.password?.message}
-                />
-
-                {errorMessage ? <div className="feedback error">{errorMessage}</div> : null}
-
-                <Button
-                  className="auth-submit-button"
-                  fullWidth
-                  loading={form.formState.isSubmitting}
-                  radius="xl"
-                  rightSection={<ArrowRight size={18} />}
-                  size="lg"
-                  type="submit"
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                {
+                  icon: CakeSlice,
+                  title: 'Festas vivas',
+                  copy: 'Cards grandes, status claro e filtros por evento.'
+                },
+                {
+                  icon: BadgeCheck,
+                  title: 'Pronto para mobile',
+                  copy: 'Navegação inferior e gestos visuais suaves.'
+                }
+              ].map((item) => (
+                <div
+                  className="rounded-lg border border-white/10 bg-white/10 p-4 text-white backdrop-blur-md"
+                  key={item.title}
                 >
-                  {mode === 'login' ? 'Entrar com senha' : 'Criar conta e entrar'}
-                </Button>
-              </Stack>
-            </form>
-          </Stack>
-        </Paper>
-
-        <div className="feature-grid auth-feature-grid auth-feature-grid-clean">
-          <Paper className="auth-feature-card" p="md" radius="xl" shadow="sm">
-            <ThemeIcon color="blue" radius="xl" size="lg" variant="light">
-              <CakeSlice size={18} />
-            </ThemeIcon>
-            <strong>Planejamento vivo</strong>
-            <span>Festas, tarefas, convidados e custos na mesma trilha.</span>
-          </Paper>
-          <Paper className="auth-feature-card" p="md" radius="xl" shadow="sm">
-            <ThemeIcon color="cyan" radius="xl" size="lg" variant="light">
-              <BadgeCheck size={18} />
-            </ThemeIcon>
-            <strong>PWA instalavel</strong>
-            <span>Experiencia pronta para celular com tema e navegacao mobile.</span>
-          </Paper>
+                  <item.icon size={20} />
+                  <strong className="mt-3 block">{item.title}</strong>
+                  <span className="mt-1 block text-sm leading-5 text-slate-100/75">{item.copy}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <Sparkles className="absolute right-8 top-8 text-white/30" size={72} />
         </div>
-      </section>
+
+        <Card className="self-center p-5 md:p-6">
+          <div className="mb-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-300">
+              Acesso rápido
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">
+              {mode === 'login' ? 'Entrar na sua conta' : 'Criar conta no Celebra'}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {mode === 'login'
+                ? 'Use seu e-mail e senha para continuar no painel.'
+                : 'Cadastre-se e já entre direto no app para criar sua primeira festa.'}
+            </p>
+          </div>
+
+          <Tabs value={mode} onValueChange={(value) => setMode(value as AuthMode)}>
+            <TabsList className="mb-5 grid w-full grid-cols-2">
+              <TabsTrigger value="login">Entrar</TabsTrigger>
+              <TabsTrigger value="register">Criar conta</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <form className="grid gap-4" onSubmit={form.handleSubmit(handleSubmit)}>
+            {mode === 'register' ? (
+              <Field error={form.formState.errors.name?.message} label="Nome">
+                <Input placeholder="Seu nome" {...form.register('name')} />
+              </Field>
+            ) : null}
+
+            <Field error={form.formState.errors.email?.message} label="E-mail">
+              <Input placeholder="voce@celebra.app" type="email" {...form.register('email')} />
+            </Field>
+
+            <Field error={form.formState.errors.password?.message} label="Senha">
+              <Input placeholder="Sua senha" type="password" {...form.register('password')} />
+            </Field>
+
+            {errorMessage ? (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+                {errorMessage}
+              </div>
+            ) : null}
+
+            <Button className="mt-2 w-full" disabled={form.formState.isSubmitting} size="lg" type="submit" variant="premium">
+              {form.formState.isSubmitting
+                ? 'Entrando...'
+                : mode === 'login'
+                  ? 'Entrar com senha'
+                  : 'Criar conta e entrar'}
+              <ArrowRight size={18} />
+            </Button>
+          </form>
+        </Card>
+      </motion.section>
     </main>
   );
 }

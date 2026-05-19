@@ -5,6 +5,7 @@ export type Task = {
   title: string;
   assignee: string;
   dueDate: string;
+  description: string;
   status: string;
   done: boolean;
 };
@@ -14,6 +15,20 @@ export type Guest = {
   name: string;
   group: string;
   status: GuestStatus;
+  invitationToken: string;
+  email: string;
+  phoneNumber: string;
+};
+
+export type Invitation = {
+  token: string;
+  guestName: string;
+  guestStatus: GuestStatus;
+  partyName: string;
+  partyDate: string;
+  partyTime: string;
+  partyLocation: string;
+  partyCoverImageUrl: string;
 };
 
 export type BudgetItem = {
@@ -31,12 +46,14 @@ export type Party = {
   date: string;
   time: string;
   location: string;
+  coverImageUrl: string;
   expectedGuests: number;
+  isFinalized: boolean;
   canEdit: boolean;
   tasks: Task[];
   guests: Guest[];
   budget: {
-    estimated: number;
+    estimated: number | null;
     spent: number;
     items: BudgetItem[];
   };
