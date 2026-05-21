@@ -1,4 +1,4 @@
-import type { Invitation, Party } from '@/domain/entities/party';
+import type { GuestType, Invitation, Party } from '@/domain/entities/party';
 
 export type CreatePartyInput = {
   name: string;
@@ -32,6 +32,7 @@ export type UpdateTaskInput = {
 export type CreateGuestInput = {
   name: string;
   group: string;
+  type: GuestType;
   email?: string;
   phoneNumber?: string;
 };
@@ -40,6 +41,7 @@ export type CreateBudgetItemInput = {
   label: string;
   category: string;
   amount: number;
+  isPaid: boolean;
 };
 
 export interface PartyRepository {

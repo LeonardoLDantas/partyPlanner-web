@@ -34,7 +34,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { AuthSession } from '@/domain/entities/auth';
 import type { ThemeMode } from '@/domain/entities/notification';
-import type { GuestStatus, Party } from '@/domain/entities/party';
+import type { GuestStatus, GuestType, Party } from '@/domain/entities/party';
 import { useDashboardData } from '@/presentation/hooks/useDashboardData';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Button } from '@/presentation/components/ui/button';
@@ -67,6 +67,10 @@ const sections = [
 
 const partyCategories = ['Todos', 'Aniversario', 'Festa', 'Formatura', 'Casamento', 'Noivado', 'Outros'] as const;
 const guestStatuses: GuestStatus[] = ['Confirmado', 'Pendente', 'Recusou'];
+const guestTypes: { value: GuestType; label: string }[] = [
+  { value: 'Adulto', label: 'Adulto' },
+  { value: 'Crianca', label: 'Criança' }
+];
 const taskColumns = [
   { id: 'Pendente', label: 'Pendente', tone: 'border-fuchsia-400/25 bg-fuchsia-400/10 text-fuchsia-100' },
   { id: 'Em andamento', label: 'Em andamento', tone: 'border-sky-400/25 bg-sky-400/10 text-sky-100' },
@@ -275,6 +279,10 @@ function getExpenseCategoryLabel(value: string) {
   return expenseCategories.find((category) => category.value === value)?.label ?? value;
 }
 
+function getGuestTypeLabel(value: GuestType) {
+  return guestTypes.find((type) => type.value === value)?.label ?? value;
+}
+
 function getPartyCategoryLabel(value: string) {
   return value === 'Aniversario' ? 'Aniversário' : value;
 }
@@ -343,8 +351,14 @@ export function PlannerDashboard({
   const [editingTaskId, setEditingTaskId] = useState('');
   const [editingTaskForm, setEditingTaskForm] = useState({ title: '', assignee: '', description: '' });
   const [viewingTask, setViewingTask] = useState<TaskItem | null>(null);
-  const [guestForm, setGuestForm] = useState({ name: '', group: '', email: '', phoneNumber: '+55 ' });
-  const [budgetForm, setBudgetForm] = useState({ label: '', category: 'Outros', amount: '' });
+  const [guestForm, setGuestForm] = useState<{ name: string; group: string; type: GuestType; email: string; phoneNumber: string }>({
+    name: '',
+    group: '',
+    type: 'Adulto',
+    email: '',
+    phoneNumber: '+55 '
+  });
+  const [budgetForm, setBudgetForm] = useState({ label: '', category: 'Outros', amount: '', isPaid: false });
   const [editingBudgetItemId, setEditingBudgetItemId] = useState('');
   const [editingBudgetAmount, setEditingBudgetAmount] = useState('');
   const [draggingTaskId, setDraggingTaskId] = useState('');
@@ -723,7 +737,7 @@ export function PlannerDashboard({
     try {
       setActionError('');
       await createGuest.mutateAsync({ partyId: selectedParty.id, ...guestForm });
-      setGuestForm({ name: '', group: '', email: '', phoneNumber: '+55 ' });
+      setGuestForm({ name: '', group: '', type: 'Adulto', email: '', phoneNumber: '+55 ' });
       setGuestDialogOpen(false);
       pushToast('Convidado adicionado', 'A lista de presença foi atualizada.');
     } catch (error) {
@@ -863,9 +877,10 @@ export function PlannerDashboard({
         partyId: selectedParty.id,
         label: budgetForm.label,
         category: budgetForm.category,
-        amount: parseCurrencyInput(budgetForm.amount)
+        amount: parseCurrencyInput(budgetForm.amount),
+        isPaid: budgetForm.isPaid
       });
-      setBudgetForm({ label: '', category: 'Outros', amount: '' });
+      setBudgetForm({ label: '', category: 'Outros', amount: '', isPaid: false });
       pushToast('Despesa registrada', 'O financeiro do evento foi atualizado.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Não foi possível registrar a despesa.');
@@ -894,7 +909,8 @@ export function PlannerDashboard({
         budgetItemId: item.id,
         label: item.label,
         category: item.category,
-        amount: parseCurrencyInput(editingBudgetAmount)
+        amount: parseCurrencyInput(editingBudgetAmount),
+        isPaid: item.isPaid
       });
       setEditingBudgetItemId('');
       setEditingBudgetAmount('');
@@ -927,6 +943,27 @@ export function PlannerDashboard({
       pushToast('Despesa removida', 'O total do orçamento foi atualizado.');
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Não foi possível excluir a despesa.');
+    }
+  }
+
+  async function handleToggleBudgetItemPaid(item: Party['budget']['items'][number]) {
+    if (!selectedParty || selectedPartyLocked) {
+      return;
+    }
+
+    try {
+      setActionError('');
+      await updateBudgetItem.mutateAsync({
+        partyId: selectedParty.id,
+        budgetItemId: item.id,
+        label: item.label,
+        category: item.category,
+        amount: item.amount,
+        isPaid: !item.isPaid
+      });
+      pushToast(item.isPaid ? 'Despesa pendente' : 'Despesa paga', `"${item.label}" foi atualizada.`);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível atualizar o pagamento da despesa.');
     }
   }
 
@@ -1597,7 +1634,9 @@ export function PlannerDashboard({
             <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[18px] border border-white/10 bg-[#101a2d] p-3 shadow-[0_10px_26px_rgba(0,0,0,0.22)]" key={guest.id}>
               <div className="min-w-0">
                 <strong className="block truncate text-slate-50">{guest.name}</strong>
-                <span className="text-sm text-slate-400">{guest.group}</span>
+                <span className="text-sm text-slate-400">
+                  {guest.group} | {getGuestTypeLabel(guest.type)}
+                </span>
                 {guest.email || guest.phoneNumber ? (
                   <span className="mt-1 block truncate text-xs text-slate-500">
                     {[guest.email, guest.phoneNumber].filter(Boolean).join(' | ')}
@@ -1925,6 +1964,10 @@ export function PlannerDashboard({
                   value={budgetForm.amount}
                   onChange={(event) => setBudgetForm((current) => ({ ...current, amount: formatCurrencyInput(event.target.value) }))}
                 />
+                <label className="flex items-center gap-2 rounded-[14px] border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-slate-200">
+                  <Checkbox checked={budgetForm.isPaid} onCheckedChange={(checked) => setBudgetForm((current) => ({ ...current, isPaid: checked === true }))} />
+                  Marcar como paga
+                </label>
                 <Button disabled={selectedPartyLocked || createBudgetItem.isPending} type="submit" variant="premium">
                   Salvar despesa
                 </Button>
@@ -1950,6 +1993,19 @@ export function PlannerDashboard({
                       ) : (
                         <strong className="text-slate-50">{currencyFormatter.format(item.amount)}</strong>
                       )}
+                      <button
+                        className={cn(
+                          'h-10 rounded-full border px-3 text-xs font-bold transition-colors',
+                          item.isPaid
+                            ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+                            : 'border-amber-300/25 bg-amber-300/10 text-amber-100'
+                        )}
+                        disabled={selectedPartyLocked || updateBudgetItem.isPending}
+                        onClick={() => void handleToggleBudgetItemPaid(item)}
+                        type="button"
+                      >
+                        {item.isPaid ? 'Paga' : 'Pendente'}
+                      </button>
                       {editingBudgetItemId === item.id ? (
                         <button
                           className="grid h-10 w-10 place-items-center rounded-full border border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
@@ -2123,6 +2179,10 @@ export function PlannerDashboard({
                       />
                     </Field>
                   </div>
+                  <label className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold">
+                    <Checkbox checked={budgetForm.isPaid} onCheckedChange={(checked) => setBudgetForm((current) => ({ ...current, isPaid: checked === true }))} />
+                    Marcar como paga
+                  </label>
                   <Button disabled={createBudgetItem.isPending} type="submit" variant="premium">
                     Salvar despesa
                   </Button>
@@ -2171,7 +2231,9 @@ export function PlannerDashboard({
                 <div className="grid gap-3 rounded-lg border border-border bg-muted/40 p-4 md:grid-cols-[1fr_auto] md:items-center" key={guest.id}>
                   <div>
                     <strong>{guest.name}</strong>
-                    <p className="mt-1 text-sm text-muted-foreground">{guest.group}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {guest.group} | {getGuestTypeLabel(guest.type)}
+                    </p>
                     {guest.email || guest.phoneNumber ? (
                       <p className="mt-1 text-xs text-muted-foreground">
                         {[guest.email, guest.phoneNumber].filter(Boolean).join(' | ')}
@@ -2245,6 +2307,20 @@ export function PlannerDashboard({
               </Field>
               <Field label="Grupo">
                 <Input required value={guestForm.group} onChange={(event) => setGuestForm((current) => ({ ...current, group: event.target.value }))} />
+              </Field>
+              <Field label="Tipo de convidado">
+                <Select value={guestForm.type} onValueChange={(value) => setGuestForm((current) => ({ ...current, type: value as GuestType }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {guestTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </Field>
               <Field label="Email">
                 <Input inputMode="email" placeholder="nome@email.com" value={guestForm.email} onChange={(event) => setGuestForm((current) => ({ ...current, email: event.target.value }))} />
@@ -2334,6 +2410,20 @@ export function PlannerDashboard({
                       ) : (
                         <strong className="min-w-28 text-right">{currencyFormatter.format(item.amount)}</strong>
                       )}
+                      <Button
+                        className={cn(
+                          item.isPaid
+                            ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/20'
+                            : 'border-amber-300/25 bg-amber-300/10 text-amber-100 hover:bg-amber-300/20'
+                        )}
+                        disabled={selectedPartyLocked || updateBudgetItem.isPending}
+                        onClick={() => void handleToggleBudgetItemPaid(item)}
+                        size="sm"
+                        type="button"
+                        variant="outline"
+                      >
+                        {item.isPaid ? 'Paga' : 'Pendente'}
+                      </Button>
                       {editingBudgetItemId === item.id ? (
                         <Button
                           disabled={selectedPartyLocked || updateBudgetItem.isPending}
@@ -2411,6 +2501,10 @@ export function PlannerDashboard({
                   onChange={(event) => setBudgetForm((current) => ({ ...current, amount: formatCurrencyInput(event.target.value) }))}
                 />
               </Field>
+              <label className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm font-semibold">
+                <Checkbox checked={budgetForm.isPaid} onCheckedChange={(checked) => setBudgetForm((current) => ({ ...current, isPaid: checked === true }))} />
+                Marcar como paga
+              </label>
               <Button disabled={selectedPartyLocked || createBudgetItem.isPending} type="submit" variant="premium">
                 <CircleDollarSign size={17} />
                 Salvar despesa
@@ -2735,6 +2829,20 @@ export function PlannerDashboard({
                 value={guestForm.group}
                 onChange={(event) => setGuestForm((current) => ({ ...current, group: event.target.value }))}
               />
+            </Field>
+            <Field label="Tipo de convidado">
+              <Select value={guestForm.type} onValueChange={(value) => setGuestForm((current) => ({ ...current, type: value as GuestType }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {guestTypes.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Email">
               <Input

@@ -1,4 +1,5 @@
 export type GuestStatus = 'Confirmado' | 'Pendente' | 'Recusou';
+export type GuestType = 'Adulto' | 'Crianca';
 
 export type Task = {
   id: string;
@@ -14,6 +15,7 @@ export type Guest = {
   id: string;
   name: string;
   group: string;
+  type: GuestType;
   status: GuestStatus;
   invitationToken: string;
   email: string;
@@ -36,6 +38,7 @@ export type BudgetItem = {
   label: string;
   category: string;
   amount: number;
+  isPaid: boolean;
 };
 
 export type Party = {
