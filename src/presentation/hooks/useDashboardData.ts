@@ -80,6 +80,16 @@ export function useDashboardData(enabled: boolean) {
     }
   });
 
+  const deleteParty = useMutation({
+    mutationFn: async (partyId: string) =>
+      container.partyRepository.deleteParty(partyId),
+    onSuccess: (_, deletedPartyId) => {
+      queryClient.setQueryData<DashboardData | undefined>(dashboardKey, (current) =>
+        current ? { ...current, parties: current.parties.filter((party) => party.id !== deletedPartyId) } : current
+      );
+    }
+  });
+
   const createTask = useMutation({
     mutationFn: async (variables: { partyId: string } & CreateTaskInput) =>
       container.partyRepository.createTask(variables.partyId, {
@@ -200,6 +210,7 @@ export function useDashboardData(enabled: boolean) {
     dashboardQuery,
     createParty,
     updateParty,
+    deleteParty,
     createTask,
     updateTask,
     deleteTask,

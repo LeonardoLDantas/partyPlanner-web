@@ -14,7 +14,7 @@ const buttonVariants = cva(
         ghost: 'text-foreground hover:bg-white/10',
         outline: 'border border-border bg-transparent text-foreground hover:bg-white/10',
         premium:
-          'bg-gradient-to-r from-sky-400 via-blue-500 to-fuchsia-500 text-white shadow-[0_18px_44px_rgba(59,130,246,0.28)] hover:brightness-110'
+          'celebra-action-fill text-white hover:brightness-110'
       },
       size: {
         default: 'h-11 px-4',

@@ -41,18 +41,18 @@ export function InvitationPage() {
   const coverImage = invitation?.partyCoverImageUrl || '/illustrations/birthday-hero.svg';
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_50%_-10%,rgba(124,60,255,0.28),transparent_34%),#020914] px-4 py-6 text-white">
+    <main className="celebra-route-background min-h-screen px-4 py-6 text-white">
       <div className="mx-auto grid min-h-[calc(100vh-48px)] max-w-md content-center gap-5">
         <header className="flex items-center gap-3">
-          <div className="grid h-12 w-12 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#5128ff,#f1329d)]">
+          <div className="celebra-brand-mark grid h-12 w-12 place-items-center rounded-[14px]">
             <PartyPopper size={28} />
           </div>
-          <strong className="bg-[linear-gradient(135deg,#5b35ff_8%,#f1329d_92%)] bg-clip-text text-[2.25rem] font-extrabold leading-none text-transparent">
+          <strong className="celebra-brand-text text-[2.25rem] font-extrabold leading-none">
             Celebra
           </strong>
         </header>
 
-        <Card className="overflow-hidden rounded-[26px] border-white/10 bg-[#071225]/92 shadow-[0_24px_60px_rgba(0,0,0,0.42)]">
+        <Card className="overflow-hidden rounded-[26px] border-white/10 bg-panel/92 shadow-[0_24px_60px_rgba(0,0,0,0.42)]">
           {invitationQuery.isLoading ? (
             <CardContent className="p-6 text-center text-slate-300">Carregando convite...</CardContent>
           ) : invitationQuery.isError || !invitation ? (
@@ -64,7 +64,7 @@ export function InvitationPage() {
             <>
               <div className="relative h-56 overflow-hidden">
                 <img alt={invitation.partyName} className="h-full w-full object-cover" src={coverImage} />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,20,0.1),rgba(2,9,20,0.95))]" />
+                <div className="celebra-media-overlay absolute inset-0" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <span className="inline-flex rounded-full bg-white/16 px-3 py-1 text-xs font-bold backdrop-blur">
                     Convite especial
@@ -118,7 +118,7 @@ export function InvitationPage() {
 
                 <div className="rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-sm font-semibold text-slate-300">
                   Status atual:{' '}
-                  <span className={invitation.guestStatus === 'Confirmado' || selectedStatus === 'Confirmado' ? 'text-emerald-300' : 'text-[#ef3f98]'}>
+                  <span className={invitation.guestStatus === 'Confirmado' || selectedStatus === 'Confirmado' ? 'text-emerald-300' : 'text-sky-300'}>
                     {selectedStatus ?? invitation.guestStatus}
                   </span>
                 </div>

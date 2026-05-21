@@ -35,7 +35,7 @@ export function ToastStack({
               initial={{ opacity: 0, x: 24, scale: 0.98 }}
               transition={{ duration: 0.18 }}
             >
-              <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-sky-400 to-fuchsia-400" />
+              <div className="celebra-progress-fill absolute inset-y-0 left-0 w-1" />
               <ToastPrimitive.Title className="text-sm font-semibold">{toast.title}</ToastPrimitive.Title>
               <ToastPrimitive.Description className="mt-1 text-sm leading-5 text-muted-foreground">
                 {toast.message}

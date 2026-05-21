@@ -1,0 +1,167 @@
+@theme {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-brand: hsl(var(--brand));
+  --color-brand-foreground: hsl(var(--brand-foreground));
+  --color-brand-soft: hsl(var(--brand-soft));
+  --color-panel: hsl(var(--panel));
+  --color-panel-border: hsl(var(--panel-border));
+}
+
+:root,
+:root[data-theme='dark'],
+.dark {
+  color-scheme: dark;
+  --background: 223 64% 5%;
+  --foreground: 213 31% 91%;
+  --card: 220 54% 9%;
+  --card-foreground: 213 31% 91%;
+  --popover: 221 58% 7%;
+  --popover-foreground: 213 31% 91%;
+  --primary: 205 94% 58%;
+  --primary-foreground: 223 64% 5%;
+  --secondary: 220 47% 14%;
+  --secondary-foreground: 213 31% 91%;
+  --muted: 220 43% 13%;
+  --muted-foreground: 215 20% 65%;
+  --accent: 212 96% 64%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 343 82% 67%;
+  --border: 216 40% 20%;
+  --input: 220 48% 12%;
+  --ring: 204 95% 67%;
+  --brand: 204 94% 62%;
+  --brand-foreground: 210 40% 98%;
+  --brand-soft: 210 94% 72%;
+  --panel: 219 66% 7%;
+  --panel-border: 214 55% 20%;
+  --celebra-page-background:
+    radial-gradient(circle at 12% 8%, rgba(14, 165, 233, 0.18), transparent 31%),
+    radial-gradient(circle at 88% 0%, rgba(37, 99, 235, 0.16), transparent 28%),
+    linear-gradient(180deg, hsl(var(--background)) 0%, #020916 100%);
+  --celebra-route-background:
+    radial-gradient(circle at 50% -10%, rgba(14, 165, 233, 0.24), transparent 34%),
+    #010611;
+  --celebra-mobile-background:
+    radial-gradient(circle at 50% -12%, rgba(14, 165, 233, 0.16), transparent 34%),
+    #010611;
+  --celebra-featured-gradient:
+    linear-gradient(135deg, rgba(3, 105, 161, 0.82), rgba(3, 12, 31, 0.98) 52%, rgba(30, 64, 175, 0.74));
+  --celebra-auth-gradient:
+    linear-gradient(135deg, rgba(3, 105, 161, 0.8), rgba(5, 15, 35, 0.96) 46%, rgba(30, 64, 175, 0.76));
+  --celebra-selected-gradient:
+    linear-gradient(145deg, rgba(14, 165, 233, 0.24), rgba(5, 17, 38, 0.96) 48%, rgba(37, 99, 235, 0.22));
+  --celebra-panel-gradient:
+    linear-gradient(145deg, rgba(4, 18, 40, 0.98), rgba(2, 8, 24, 0.99));
+  --celebra-cover-overlay:
+    linear-gradient(90deg, rgba(1, 8, 28, 0.98) 0%, rgba(7, 35, 91, 0.82) 44%, rgba(14, 116, 144, 0.2) 100%);
+  --celebra-media-overlay:
+    linear-gradient(180deg, rgba(2, 9, 20, 0.1), rgba(2, 9, 20, 0.95));
+  --celebra-brand-gradient: linear-gradient(135deg, #0284c7, #2563eb);
+  --celebra-wordmark-gradient: linear-gradient(135deg, #38bdf8 8%, #3b82f6 92%);
+  --celebra-action-gradient: linear-gradient(90deg, #06b6d4, #0284c7, #2563eb);
+  --celebra-progress-gradient: linear-gradient(90deg, #0ea5e9, #2563eb);
+  --celebra-action-shadow: 0 18px 44px rgba(14, 165, 233, 0.28);
+  --celebra-selected-shadow: 0 22px 70px rgba(14, 165, 233, 0.14);
+  --celebra-panel-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 18px 34px rgba(0, 0, 0, 0.28);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --background: 220 35% 96%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 221 83% 53%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 220 28% 91%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 220 28% 91%;
+  --muted-foreground: 215 16% 42%;
+  --accent: 212 96% 56%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 343 75% 46%;
+  --border: 220 18% 83%;
+  --input: 220 30% 94%;
+  --ring: 221 83% 53%;
+  --brand: 221 83% 53%;
+  --brand-foreground: 210 40% 98%;
+  --brand-soft: 204 94% 48%;
+  --panel: 0 0% 100%;
+  --panel-border: 220 18% 83%;
+}
+
+.celebra-route-background {
+  background: var(--celebra-route-background);
+}
+
+.celebra-mobile-background {
+  background: var(--celebra-mobile-background);
+}
+
+.celebra-auth-surface {
+  background: var(--celebra-auth-gradient);
+}
+
+.celebra-featured-surface {
+  background: var(--celebra-featured-gradient);
+}
+
+.celebra-selected-surface {
+  background: var(--celebra-selected-gradient);
+  box-shadow: var(--celebra-selected-shadow);
+}
+
+.celebra-panel-surface {
+  background: var(--celebra-panel-gradient);
+  border-color: hsl(var(--panel-border));
+  box-shadow: var(--celebra-panel-shadow);
+}
+
+.celebra-cover-overlay {
+  background: var(--celebra-cover-overlay);
+}
+
+.celebra-media-overlay {
+  background: var(--celebra-media-overlay);
+}
+
+.celebra-brand-mark {
+  background: var(--celebra-brand-gradient);
+  color: hsl(var(--brand-foreground));
+}
+
+.celebra-brand-text {
+  background: var(--celebra-wordmark-gradient);
+  background-clip: text;
+  color: transparent;
+}
+
+.celebra-action-fill {
+  background: var(--celebra-action-gradient);
+  box-shadow: var(--celebra-action-shadow);
+}
+
+.celebra-progress-fill {
+  background: var(--celebra-progress-gradient);
+}
