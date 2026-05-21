@@ -1,72 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-
-@theme {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-}
-
-:root,
-:root[data-theme='dark'],
-.dark {
-  color-scheme: dark;
-  --background: 222 47% 7%;
-  --foreground: 213 31% 91%;
-  --card: 222 38% 12%;
-  --card-foreground: 213 31% 91%;
-  --popover: 222 40% 10%;
-  --popover-foreground: 213 31% 91%;
-  --primary: 217 91% 60%;
-  --primary-foreground: 222 47% 7%;
-  --secondary: 226 34% 18%;
-  --secondary-foreground: 213 31% 91%;
-  --muted: 222 31% 16%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 292 84% 61%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 343 82% 67%;
-  --border: 220 26% 22%;
-  --input: 222 30% 15%;
-  --ring: 217 91% 64%;
-}
-
-:root[data-theme='light'] {
-  color-scheme: light;
-  --background: 220 35% 96%;
-  --foreground: 222 47% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 220 28% 91%;
-  --secondary-foreground: 222 47% 11%;
-  --muted: 220 28% 91%;
-  --muted-foreground: 215 16% 42%;
-  --accent: 292 84% 55%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 343 75% 46%;
-  --border: 220 18% 83%;
-  --input: 220 30% 94%;
-  --ring: 221 83% 53%;
-}
+@import "./theme.css";
 
 * {
   box-sizing: border-box;
@@ -85,10 +19,7 @@ body,
 body {
   min-height: 100vh;
   overflow-x: hidden;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(56, 189, 248, 0.18), transparent 30%),
-    radial-gradient(circle at 88% 0%, rgba(217, 70, 239, 0.18), transparent 26%),
-    linear-gradient(180deg, hsl(var(--background)) 0%, #0d1525 100%);
+  background: var(--celebra-page-background);
   color: hsl(var(--foreground));
   font-family: Inter, "Segoe UI", system-ui, sans-serif;
   font-synthesis: none;

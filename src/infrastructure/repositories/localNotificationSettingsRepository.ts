@@ -4,7 +4,7 @@ import type { NotificationSettingsRepository } from '@/domain/ports/notification
 const settingsKey = 'party-planner-web-preferences';
 const defaultSettings: NotificationSettings = {
   informationalEnabled: true,
-  theme: 'light'
+  theme: 'dark'
 };
 
 export class LocalNotificationSettingsRepository implements NotificationSettingsRepository {

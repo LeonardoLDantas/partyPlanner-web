@@ -74,7 +74,7 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
         initial={{ opacity: 0, y: 16 }}
         transition={{ duration: 0.24, ease: 'easeOut' }}
       >
-        <div className="relative overflow-hidden rounded-lg border border-white/10 bg-[linear-gradient(135deg,rgba(14,116,144,0.82),rgba(30,41,59,0.94)_46%,rgba(147,51,234,0.76))] p-6 shadow-2xl md:p-8">
+        <div className="celebra-auth-surface relative overflow-hidden rounded-lg border border-white/10 p-6 shadow-2xl md:p-8">
           <div className="relative z-10 grid h-full content-between gap-10">
             <div>
               <img alt="Celebra" className="h-20 w-20 rounded-full object-contain" src="/brand/celebra-mark-white.png" />
