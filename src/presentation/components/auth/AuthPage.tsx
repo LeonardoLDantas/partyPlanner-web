@@ -7,6 +7,8 @@ import { z } from 'zod';
 
 import type { AuthSession } from '@/domain/entities/auth';
 import { container } from '@/infrastructure/container';
+import { GradientText } from '@/presentation/components/nurui/gradient-text';
+import { TextShimmer } from '@/presentation/components/react-bits/text-shimmer';
 import { Button } from '@/presentation/components/ui/button';
 import { Card } from '@/presentation/components/ui/card';
 import { Field, Input } from '@/presentation/components/ui/input';
@@ -78,12 +80,20 @@ export function AuthPage({ onAuthenticated }: AuthPageProps) {
           <div className="relative z-10 grid h-full content-between gap-10">
             <div>
               <img alt="Celebra" className="h-20 w-20 rounded-full object-contain" src="/brand/celebra-mark-white.png" />
-              <p className="mt-8 text-sm font-semibold uppercase tracking-[0.18em] text-sky-100">
+              <TextShimmer
+                as="p"
+                className="mt-8 text-sm font-semibold uppercase tracking-[0.18em] [--base-color:#bae6fd] [--shimmer-color:#ffffff]"
+                duration={2.5}
+              >
                 PWA premium
-              </p>
-              <h1 className="mt-3 max-w-xl text-4xl font-semibold leading-tight text-white md:text-6xl">
+              </TextShimmer>
+              <GradientText
+                animationSpeed={5}
+                className="mt-3 max-w-xl text-4xl font-semibold leading-tight md:text-6xl"
+                colors={['#ffffff', '#c4b5fd', '#fb7185', '#67e8f9', '#ffffff']}
+              >
                 Planeje festas com ritmo, brilho e controle.
-              </h1>
+              </GradientText>
               <p className="mt-5 max-w-xl text-base leading-7 text-slate-100/82">
                 Um painel escuro e elegante para organizar eventos, convidados, tarefas e custos no mesmo lugar.
               </p>

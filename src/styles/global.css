@@ -77,6 +77,34 @@ button {
   }
 }
 
+/* nurui: gradient-button animation */
+@keyframes animate-rainbow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* nurui: gradient-text + border-button */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  animation: gradient-shift 6s ease infinite;
+}
+
+/* react-bits: text-shimmer */
+@keyframes shimmer-text {
+  0% { background-position: 100% center; }
+  100% { background-position: 0% center; }
+}
+
+.animate-shimmer-text {
+  animation: shimmer-text var(--shimmer-duration, 2s) linear infinite;
+}
+
 @media (max-width: 480px) {
   html {
     font-size: 14px;
