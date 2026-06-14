@@ -2,7 +2,6 @@ import { CheckCheck, Edit3, Eye, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import type * as React from 'react';
 
-import type { Party } from '@/domain/entities/party';
 import { taskColumns } from '@/domain/constants/party.constants';
 import { normalizeTaskStatus } from '@/domain/utils/party.utils';
 import { Badge } from '@/presentation/components/ui/badge';
@@ -61,15 +60,15 @@ export function TasksSection({
   setViewingTask,
   draggingTaskId,
   setDraggingTaskId,
-  taskDialogOpen,
-  setTaskDialogOpen,
+  taskDialogOpen: _taskDialogOpen,
+  setTaskDialogOpen: _setTaskDialogOpen,
   createTask,
   updateTask,
   deleteTask,
   onCreateTask,
   onSaveTask,
   onDeleteTask,
-  onMoveTask,
+  onMoveTask: _onMoveTask,
   onStartTaskEdit,
   onCancelTaskEdit,
   onTaskDragStart,

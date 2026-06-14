@@ -8,10 +8,8 @@ import {
   Plus,
   Users
 } from 'lucide-react';
-import type * as React from 'react';
-
 import type { Party } from '@/domain/entities/party';
-import { isUpcomingParty, getPartyCoverImage, getDaysLeftLabel, getMobileCountdownDays, getPartyProgress } from '@/domain/utils/party.utils';
+import { isUpcomingParty, getPartyCoverImage, getMobileCountdownDays } from '@/domain/utils/party.utils';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Button } from '@/presentation/components/ui/button';
 import {

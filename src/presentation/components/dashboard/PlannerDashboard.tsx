@@ -198,7 +198,7 @@ export function PlannerDashboard({
                   setEditingBudgetAmount={state.setEditingBudgetAmount}
                   createBudgetItem={state.createBudgetItem}
                   updateBudgetItem={state.updateBudgetItem}
-                  deleteBudgetItem={state.deleteBudgetItem}
+
                   headerAction={mobileHeaderAction}
                   partySelectorProps={partySelectorProps}
                   onCreateBudgetItem={state.handleCreateBudgetItem}

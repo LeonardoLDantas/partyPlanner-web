@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { GuestStatus, GuestType, Party } from '@/domain/entities/party';
 import type { ToastMessage } from '@/presentation/components/ui/toast';
-import { maximumCurrencyAmount, maximumExpectedGuests, maximumPartyLocationLength, partyCategories } from '@/domain/constants/party.constants';
+import { maximumExpectedGuests, maximumPartyLocationLength, partyCategories } from '@/domain/constants/party.constants';
 import { isUpcomingParty, normalizeTaskStatus } from '@/domain/utils/party.utils';
-import { currencyFormatter, formatCurrencyInput, parseCurrencyInput } from '@/shared/utils/formatters';
+import { currencyFormatter, parseCurrencyInput } from '@/shared/utils/formatters';
 import { useDashboardData } from '@/presentation/hooks/useDashboardData';
 
 export type Section = 'Painel' | 'Eventos' | 'Convidados' | 'Tarefas' | 'Despesas' | 'Ajustes';
