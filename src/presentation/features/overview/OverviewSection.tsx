@@ -16,7 +16,6 @@ import type { Party } from '@/domain/entities/party';
 import { getDaysLeftLabel, getMapsUrl, getPartyProgress } from '@/domain/utils/party.utils';
 import { GradientText } from '@/presentation/components/nurui/gradient-text';
 import { ProgressBar } from '@/presentation/components/nurui/progress-bar';
-import { TextShimmer } from '@/presentation/components/react-bits/text-shimmer';
 import { EmptyState, HeroChip, MetricPanel, PartyInsightsChart, StatCard } from '@/presentation/components/dashboard/DashboardShared';
 import type { DashboardState } from '@/presentation/hooks/useDashboardState';
 import { currencyFormatter, formatDateLabel, formatOptionalBudget } from '@/shared/utils/formatters';

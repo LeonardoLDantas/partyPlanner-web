@@ -25,7 +25,6 @@ type MobileExpensesSectionProps = {
   setEditingBudgetAmount: DashboardState['setEditingBudgetAmount'];
   createBudgetItem: DashboardState['createBudgetItem'];
   updateBudgetItem: DashboardState['updateBudgetItem'];
-  deleteBudgetItem: DashboardState['deleteBudgetItem'];
   headerAction: React.ReactNode;
   partySelectorProps: {
     onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
@@ -51,7 +50,6 @@ export function MobileExpensesSection({
   setEditingBudgetAmount,
   createBudgetItem,
   updateBudgetItem,
-  deleteBudgetItem,
   headerAction,
   partySelectorProps,
   onCreateBudgetItem,
