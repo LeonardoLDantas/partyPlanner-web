@@ -1,5 +1,6 @@
 export type GuestStatus = 'Confirmado' | 'Pendente' | 'Recusou';
 export type GuestType = 'Adulto' | 'Crianca';
+export type GuestGroup = 'Familia' | 'Amigos' | 'Trabalho' | 'Escola' | 'Vizinhos' | 'Outros';
 
 export type Task = {
   id: string;
@@ -14,7 +15,7 @@ export type Task = {
 export type Guest = {
   id: string;
   name: string;
-  group: string;
+  group: GuestGroup;
   type: GuestType;
   status: GuestStatus;
   invitationToken: string;

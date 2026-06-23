@@ -1,8 +1,7 @@
-import { ArrowUpDown, CalendarDays, CheckCheck, Edit3, MapPinned, Plus, Search, SlidersHorizontal, Users } from 'lucide-react';
+import { CalendarDays, CheckCheck, Edit3, Plus } from 'lucide-react';
 
 import type { Party } from '@/domain/entities/party';
-import { partyCategories } from '@/domain/constants/party.constants';
-import { getPartyCoverImage, getPartyCategoryLabel, getShortLocation } from '@/domain/utils/party.utils';
+import { isUpcomingParty, isEventDateUpcoming, getDaysLeftLabel, getPartyCategoryLabel, getPartyCoverImage } from '@/domain/utils/party.utils';
 import { MobilePage } from '@/presentation/layout/MobilePage';
 import { CreatePartyDialog } from '@/presentation/features/events/CreatePartyDialog';
 import type { DashboardState, PartyCategoryFilter } from '@/presentation/hooks/useDashboardState';
@@ -32,6 +31,74 @@ type MobileEventsSectionProps = {
   onCoverImageChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
+function PartyRow({
+  party,
+  onSelect,
+  onEdit,
+  onToggleFinalized
+}: {
+  party: Party;
+  onSelect: (id: string) => void;
+  onEdit: (p: Party) => void;
+  onToggleFinalized: (p: Party) => void;
+}) {
+  const coverImage = getPartyCoverImage(party);
+
+  return (
+    <div
+      className="flex items-center gap-3 rounded-[14px] border border-panel-border bg-panel p-3 text-left"
+      onClick={() => onSelect(party.id)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') onSelect(party.id); }}
+    >
+      <img
+        alt=""
+        className="h-11 w-11 shrink-0 rounded-xl object-cover"
+        src={coverImage}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-slate-50">{party.name}</p>
+        <div className="mt-0.5 flex items-center gap-2 text-[0.72rem] text-slate-400">
+          <CalendarDays className="shrink-0" size={12} />
+          <span className="truncate">{formatShortDateLabel(party.date)}</span>
+          <span className="text-slate-600">·</span>
+          <span>{getPartyCategoryLabel(party.category)}</span>
+        </div>
+      </div>
+      {party.isFinalized ? (
+        <span className="shrink-0 rounded-full bg-white/10 px-2.5 py-1 text-[0.65rem] font-bold text-slate-400">
+          Finalizado
+        </span>
+      ) : (
+        <span className="shrink-0 rounded-full bg-sky-400/15 px-2.5 py-1 text-[0.65rem] font-bold text-sky-300">
+          {getDaysLeftLabel(party.date)}
+        </span>
+      )}
+      {isEventDateUpcoming(party) ? (
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            className="grid h-8 w-8 place-items-center rounded-lg border border-brand/30 bg-brand/10 text-brand"
+            onClick={(e) => { e.stopPropagation(); onEdit(party); }}
+            title="Editar"
+            type="button"
+          >
+            <Edit3 size={15} />
+          </button>
+          <button
+            className="grid h-8 w-8 place-items-center rounded-lg border border-[#1f2c45] bg-[#061123]/90 text-slate-300"
+            onClick={(e) => { e.stopPropagation(); onToggleFinalized(party); }}
+            title={party.isFinalized ? 'Reabrir' : 'Finalizar'}
+            type="button"
+          >
+            <CheckCheck size={15} />
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function MobileEventsSection({
   filteredParties,
   categoryFilter,
@@ -54,35 +121,34 @@ export function MobileEventsSection({
   onDeleteParty,
   onCoverImageChange
 }: MobileEventsSectionProps) {
+  const upcomingParties = filteredParties.filter(isUpcomingParty);
+  const finalizedParties = filteredParties.filter((p) => !isUpcomingParty(p));
+
   return (
     <MobilePage
-      title="Eventos"
-      subtitle="Gerencie e acompanhe suas celebrações"
-      action={null}
+      action={
+        <button
+          className="celebra-action-fill flex h-9 items-center gap-2 rounded-[10px] px-4 text-sm font-bold text-white"
+          onClick={onCreateParty}
+          type="button"
+        >
+          <Plus size={16} />
+          Novo evento
+        </button>
+      }
       headerAction={headerAction}
+      subtitle="Gerencie suas celebrações"
+      title="Eventos"
     >
-      <div className="grid grid-cols-[minmax(0,1fr)_46px_46px] gap-2">
-        <div className="flex h-12 min-w-0 items-center gap-2 rounded-[14px] border border-panel-border bg-panel px-3">
-          <Search className="shrink-0 text-slate-300" size={22} />
-          <input
-            className="min-w-0 flex-1 bg-transparent text-sm text-slate-200 outline-none placeholder:text-slate-400"
-            placeholder="Buscar evento"
-          />
-        </div>
-        <button className="grid h-12 place-items-center rounded-[14px] border border-panel-border bg-panel text-slate-200" type="button">
-          <SlidersHorizontal size={21} />
-        </button>
-        <button className="grid h-12 place-items-center rounded-[14px] border border-panel-border bg-panel text-slate-200" type="button">
-          <ArrowUpDown size={21} />
-        </button>
-      </div>
-
+      {/* Category filter pills */}
       <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {partyCategories.map((category) => (
+        {(['Todos', 'Aniversario', 'Festa', 'Formatura', 'Casamento', 'Noivado', 'Outros'] as const).map((category) => (
           <button
             className={cn(
               'shrink-0 rounded-full px-3.5 py-2 text-sm font-bold shadow-sm',
-              categoryFilter === category ? 'bg-[#0f6edb] text-white' : 'border border-white/10 bg-white/10 text-slate-300'
+              categoryFilter === category
+                ? 'bg-[#0f6edb] text-white'
+                : 'border border-white/10 bg-white/10 text-slate-300'
             )}
             key={category}
             onClick={() => setCategoryFilter(category as PartyCategoryFilter)}
@@ -93,89 +159,64 @@ export function MobileEventsSection({
         ))}
       </div>
 
-      <div className="grid gap-3">
-        {filteredParties.map((party) => (
-          <article
-            className="relative grid h-[132px] grid-cols-[112px_minmax(0,1fr)] gap-3 overflow-hidden rounded-[18px] border border-panel-border bg-panel p-2.5 pr-12 text-left shadow-[0_12px_30px_rgba(0,0,0,0.24)]"
-            key={party.id}
-            onClick={() => onSelectParty(party.id)}
-          >
-            <img
-              alt=""
-              className="h-[112px] w-[112px] rounded-[14px] border border-sky-300/45 object-cover"
-              src={getPartyCoverImage(party)}
-            />
-            <div className="min-w-0 py-1">
-              <div className="flex min-w-0 items-start gap-2">
-                <h2 className="line-clamp-1 flex-1 text-base font-bold text-slate-50">{party.name}</h2>
-                {party.isFinalized ? (
-                  <span className="shrink-0 rounded-full bg-white/10 px-2 py-1 text-[0.58rem] font-bold text-slate-200">
-                    Finalizada
-                  </span>
-                ) : null}
-              </div>
-              <div className="mt-2 grid gap-1.5 text-[0.78rem] text-slate-200">
-                <span className="flex items-center gap-2">
-                  <CalendarDays className="shrink-0" size={16} />
-                  <span className="truncate">{formatShortDateLabel(party.date)} - {party.time || '--:--'}</span>
-                </span>
-                <span className="line-clamp-1 flex items-center gap-2">
-                  <MapPinned className="shrink-0" size={16} />
-                  <span className="truncate">{getShortLocation(party.location)}</span>
-                </span>
-                <span className="flex items-center gap-2"><Users size={16} />{party.expectedGuests} convidados</span>
-              </div>
-            </div>
-            <div className="absolute right-2.5 top-2.5 grid gap-2">
-              <button
-                className="grid h-9 w-9 place-items-center rounded-lg border border-brand/35 bg-brand/10 text-brand"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onEditParty(party);
-                }}
-                type="button"
-                title="Editar evento"
-              >
-                <Edit3 size={18} />
-              </button>
-              <button
-                className="grid h-9 w-9 place-items-center rounded-lg border border-[#1f2c45] bg-[#061123]/90 text-slate-300"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleFinalized(party);
-                }}
-                type="button"
-                title={party.isFinalized ? 'Reabrir evento' : 'Finalizar evento'}
-              >
-                <CheckCheck size={18} />
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
-      <button
-        className="celebra-action-fill mt-1 flex h-14 w-full items-center justify-center gap-3 rounded-[14px] text-xl font-bold text-white"
-        type="button"
-        onClick={onCreateParty}
-      >
-        <Plus size={24} />
-        Novo evento
-      </button>
+      {/* Upcoming */}
+      {upcomingParties.length > 0 ? (
+        <div>
+          <p className="mb-2.5 text-[0.68rem] font-bold uppercase tracking-widest text-slate-400">Próximos</p>
+          <div className="grid gap-2.5">
+            {upcomingParties.map((party) => (
+              <PartyRow
+                key={party.id}
+                onEdit={onEditParty}
+                onSelect={onSelectParty}
+                onToggleFinalized={onToggleFinalized}
+                party={party}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Finalized */}
+      {finalizedParties.length > 0 ? (
+        <div>
+          <p className="mb-2.5 text-[0.68rem] font-bold uppercase tracking-widest text-slate-400">Finalizados</p>
+          <div className="grid gap-2.5">
+            {finalizedParties.map((party) => (
+              <PartyRow
+                key={party.id}
+                onEdit={onEditParty}
+                onSelect={onSelectParty}
+                onToggleFinalized={onToggleFinalized}
+                party={party}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Empty state */}
+      {filteredParties.length === 0 ? (
+        <div className="rounded-[18px] border border-panel-border bg-panel p-6 text-center">
+          <p className="text-sm text-slate-400">Nenhum evento encontrado.</p>
+        </div>
+      ) : null}
+
       <CreatePartyDialog
-        createOpen={createOpen}
-        setCreateOpen={setCreateOpen}
-        editingPartyId={editingPartyId}
-        partyForm={partyForm}
-        setPartyForm={setPartyForm}
         actionError={actionError}
+        createOpen={createOpen}
         createParty={createParty}
-        updateParty={updateParty}
         deleteParty={deleteParty}
-        onSubmit={onCreatePartySubmit}
-        onDelete={onDeleteParty}
-        onCoverImageChange={onCoverImageChange}
-        onOpen={onCreateParty}
+        editingPartyId={editingPartyId}
         hiddenTrigger
+        onCoverImageChange={onCoverImageChange}
+        onDelete={onDeleteParty}
+        onOpen={onCreateParty}
+        onSubmit={onCreatePartySubmit}
+        partyForm={partyForm}
+        setCreateOpen={setCreateOpen}
+        setPartyForm={setPartyForm}
+        updateParty={updateParty}
       />
     </MobilePage>
   );

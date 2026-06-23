@@ -1,7 +1,7 @@
 import { Copy, Mail, Search, Trash2 } from 'lucide-react';
 
 import type { Party } from '@/domain/entities/party';
-import { guestStatuses, guestTypes } from '@/domain/constants/party.constants';
+import { guestStatuses, guestGroups, guestTypes } from '@/domain/constants/party.constants';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Button } from '@/presentation/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/ui/card';
@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/presentation/components/ui/tabs';
 import type { DashboardState } from '@/presentation/hooks/useDashboardState';
 import { formatBrazilPhoneInput, getGuestStatusBadgeClass, getGuestTypeLabel } from '@/shared/utils/formatters';
 import { WhatsappIcon } from '@/presentation/components/icons/WhatsappIcon';
-import type { GuestStatus, GuestType } from '@/domain/entities/party';
+import type { GuestStatus, GuestGroup, GuestType } from '@/domain/entities/party';
 
 type GuestsSectionProps = {
   selectedParty: DashboardState['selectedParty'];
@@ -85,7 +85,7 @@ export function GuestsSection({
                 <div>
                   <strong>{guest.name}</strong>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {guest.group} | {getGuestTypeLabel(guest.type)}
+                    {guestGroups.find((g) => g.value === guest.group)?.label ?? guest.group} | {getGuestTypeLabel(guest.type)}
                   </p>
                   {guest.email || guest.phoneNumber ? (
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -159,7 +159,14 @@ export function GuestsSection({
               <Input required value={guestForm.name} onChange={(event) => setGuestForm((current) => ({ ...current, name: event.target.value }))} />
             </Field>
             <Field label="Grupo">
-              <Input required value={guestForm.group} onChange={(event) => setGuestForm((current) => ({ ...current, group: event.target.value }))} />
+              <Select value={guestForm.group} onValueChange={(value) => setGuestForm((current) => ({ ...current, group: value as GuestGroup }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {guestGroups.map((g) => (
+                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Tipo de convidado">
               <Select value={guestForm.type} onValueChange={(value) => setGuestForm((current) => ({ ...current, type: value as GuestType }))}>

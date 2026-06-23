@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -44,6 +45,18 @@ export function PlannerDashboard({
 }: PlannerDashboardProps) {
   const state = useDashboardState();
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('celebra-sidebar-collapsed') === 'true'; } catch { return false; }
+  });
+
+  const handleSidebarToggle = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('celebra-sidebar-collapsed', String(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
   const partySelectorProps = {
     onPointerDown: state.handlePartySelectorPointerDown,
     onPointerMove: state.handlePartySelectorPointerMove,
@@ -70,15 +83,19 @@ export function PlannerDashboard({
 
   return (
     <ToastProvider swipeDirection="right">
-      <div className="min-h-screen max-w-full overflow-x-clip px-0 py-0 lg:max-w-none lg:px-4 lg:py-4">
-        <div className="mx-auto max-w-none">
+      <div className="max-w-full overflow-x-clip px-0 py-0 lg:h-screen lg:max-w-none lg:overflow-hidden lg:px-4 lg:py-4">
+        <div className="mx-auto max-w-none lg:h-full">
           <Sidebar
             activeSection={state.activeSection}
+            collapsed={sidebarCollapsed}
             onSectionChange={state.setActiveSection}
+            onToggle={handleSidebarToggle}
             onLogout={onLogout}
           />
 
-          <main className="min-w-0 lg:ml-[284px]">
+          <main
+            className={`min-w-0 lg:h-full lg:transition-[margin-left] lg:duration-[280ms] lg:ease-[ease] ${sidebarCollapsed ? 'lg:ml-[88px]' : 'lg:ml-[284px]'}`}
+          >
             {/* Mobile layout */}
             <div className="lg:hidden">
               <MobileNotificationsSheet
@@ -221,12 +238,35 @@ export function PlannerDashboard({
             </div>
 
             {/* Desktop layout */}
-            <div className="hidden content-start gap-5 pb-6 lg:grid">
-              <header className="sticky top-4 z-30 rounded-lg border border-border bg-card/78 p-4 shadow-2xl backdrop-blur-xl">
+            <div className="hidden lg:flex lg:h-full lg:flex-col lg:gap-5 lg:overflow-hidden">
+              <header className="sticky top-4 z-30 shrink-0 rounded-lg border border-border bg-card/78 p-4 shadow-2xl backdrop-blur-xl">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-300">{activeLabel}</p>
-                    <h1 className="mt-1 truncate text-2xl font-semibold md:text-3xl">Olá, {session.user.name}</h1>
+                    {state.activeSection === 'Painel' ? (
+                      <>
+                        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-sky-300">
+                          Bem-vindo de volta
+                        </p>
+                        <h1 className="mt-1 truncate text-2xl font-semibold md:text-3xl">
+                          Olá, {session.user.name.split(' ')[0]}
+                        </h1>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          {{
+                            Eventos: 'Gerencie suas celebrações',
+                            Convidados: 'Lista e confirmações',
+                            Tarefas: 'Kanban do evento ativo',
+                            Despesas: 'Orçamento e gastos',
+                            Ajustes: 'Configurações da conta'
+                          }[state.activeSection] ?? ''}
+                        </p>
+                        <h1 className="mt-1 truncate text-2xl font-semibold md:text-3xl">
+                          {activeLabel}
+                        </h1>
+                      </>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="relative">
@@ -280,9 +320,11 @@ export function PlannerDashboard({
                 </div>
               ) : null}
 
+              <div className={`min-h-0 flex-1 ${state.activeSection === 'Eventos' ? 'overflow-hidden' : 'overflow-y-auto [scrollbar-width:thin]'}`}>
               <AnimatePresence mode="wait">
                 <motion.div
                   animate={{ opacity: 1, y: 0 }}
+                  className={state.activeSection === 'Eventos' ? 'h-full' : undefined}
                   exit={{ opacity: 0, y: -8 }}
                   initial={{ opacity: 0, y: 8 }}
                   key={state.activeSection}
@@ -400,6 +442,7 @@ export function PlannerDashboard({
                   ) : null}
                 </motion.div>
               </AnimatePresence>
+              </div>
             </div>
           </main>
         </div>

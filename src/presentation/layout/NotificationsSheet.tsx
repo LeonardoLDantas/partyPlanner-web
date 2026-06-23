@@ -1,4 +1,3 @@
-import { AnimatedList } from '@/presentation/components/nurui/animated-list';
 import { Button } from '@/presentation/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/presentation/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/presentation/components/ui/dialog';
@@ -31,14 +30,14 @@ export function DesktopNotificationsPanel({
       </CardHeader>
       <CardContent className="min-h-0 flex-1 overflow-y-auto p-3">
         {notifications.length > 0 ? (
-          <AnimatedList delay={400}>
+          <div className="grid gap-2">
             {notifications.map((notification) => (
-              <div className="rounded-md bg-muted/50 p-3 w-full" key={notification.id}>
+              <div className="rounded-md bg-muted/50 p-3" key={notification.id}>
                 <strong className="text-sm">{notification.title}</strong>
                 <p className="mt-1 text-sm leading-5 text-muted-foreground">{notification.message}</p>
               </div>
             ))}
-          </AnimatedList>
+          </div>
         ) : (
           <p className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">Nenhuma notificação por enquanto.</p>
         )}
@@ -86,14 +85,14 @@ export function MobileNotificationsSheet({
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
           {notifications.length > 0 ? (
-            <AnimatedList delay={350}>
+            <div className="grid gap-2">
               {notifications.map((notification) => (
-                <div className="rounded-[16px] border border-white/10 bg-white/[0.05] p-3 w-full" key={notification.id}>
+                <div className="rounded-[16px] border border-white/10 bg-white/[0.05] p-3" key={notification.id}>
                   <strong className="block text-sm text-slate-50">{notification.title}</strong>
                   <p className="mt-1 text-sm leading-5 text-slate-400">{notification.message}</p>
                 </div>
               ))}
-            </AnimatedList>
+            </div>
           ) : (
             <p className="rounded-[16px] border border-white/10 bg-white/[0.05] p-4 text-sm text-slate-400">
               Nenhuma notificação por enquanto.

@@ -2,7 +2,7 @@ import { Edit3 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 import type { Party } from '@/domain/entities/party';
-import { getDaysLeftLabel, getPartyCategoryLabel, getPartyProgress } from '@/domain/utils/party.utils';
+import { getDaysLeftLabel, getPartyCategoryLabel, getPartyProgress, isEventDateUpcoming } from '@/domain/utils/party.utils';
 import { Badge } from '@/presentation/components/ui/badge';
 import { MetricMini } from '@/presentation/components/dashboard/DashboardShared';
 import { formatDateLabel } from '@/shared/utils/formatters';
@@ -70,31 +70,33 @@ export function PartyCard({ party, index, isActive, onSelect, onEdit, onToggleFi
         </div>
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-2">
-        <span
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
-          onClick={(event) => {
-            event.stopPropagation();
-            onEdit(party);
-          }}
-          role="button"
-          tabIndex={0}
-        >
-          <Edit3 size={15} />
-          Editar
-        </span>
-        <span
-          className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleFinalized(party);
-          }}
-          role="button"
-          tabIndex={0}
-        >
-          {party.isFinalized ? 'Reabrir evento' : 'Finalizar evento'}
-        </span>
-      </div>
+      {isEventDateUpcoming(party) ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          <span
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit(party);
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            <Edit3 size={15} />
+            Editar
+          </span>
+          <span
+            className="inline-flex h-10 items-center justify-center rounded-md border border-white/10 bg-white/5 px-3 text-sm font-semibold text-slate-100 transition-colors hover:bg-white/10"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleFinalized(party);
+            }}
+            role="button"
+            tabIndex={0}
+          >
+            {party.isFinalized ? 'Reabrir evento' : 'Finalizar evento'}
+          </span>
+        </div>
+      ) : null}
     </motion.button>
   );
 }

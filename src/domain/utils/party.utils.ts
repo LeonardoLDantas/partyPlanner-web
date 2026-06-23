@@ -18,6 +18,17 @@ export function isUpcomingParty(party: Party) {
   return eventDate.getTime() >= today.getTime();
 }
 
+export function isEventDateUpcoming(party: Party) {
+  const eventDate = new Date(`${party.date}T${party.time || '00:00'}`);
+  if (Number.isNaN(eventDate.getTime())) {
+    return true;
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  eventDate.setHours(0, 0, 0, 0);
+  return eventDate.getTime() >= today.getTime();
+}
+
 export function getPartyProgress(party: Party) {
   if (party.tasks.length === 0) {
     return 0;

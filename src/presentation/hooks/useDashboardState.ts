@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { GuestStatus, GuestType, Party } from '@/domain/entities/party';
+import type { GuestGroup, GuestStatus, GuestType, Party } from '@/domain/entities/party';
 import type { ToastMessage } from '@/presentation/components/ui/toast';
 import { maximumExpectedGuests, maximumPartyLocationLength, partyCategories } from '@/domain/constants/party.constants';
 import { isUpcomingParty, normalizeTaskStatus } from '@/domain/utils/party.utils';
@@ -120,9 +120,9 @@ export function useDashboardState() {
   const [editingTaskId, setEditingTaskId] = useState('');
   const [editingTaskForm, setEditingTaskForm] = useState({ title: '', assignee: '', description: '' });
   const [viewingTask, setViewingTask] = useState<TaskItem | null>(null);
-  const [guestForm, setGuestForm] = useState<{ name: string; group: string; type: GuestType; email: string; phoneNumber: string }>({
+  const [guestForm, setGuestForm] = useState<{ name: string; group: GuestGroup; type: GuestType; email: string; phoneNumber: string }>({
     name: '',
-    group: '',
+    group: 'Outros',
     type: 'Adulto',
     email: '',
     phoneNumber: '+55 '
@@ -545,7 +545,7 @@ export function useDashboardState() {
     try {
       setActionError('');
       await createGuest.mutateAsync({ partyId: selectedParty.id, ...guestForm });
-      setGuestForm({ name: '', group: '', type: 'Adulto', email: '', phoneNumber: '+55 ' });
+      setGuestForm({ name: '', group: 'Outros', type: 'Adulto', email: '', phoneNumber: '+55 ' });
       setGuestDialogOpen(false);
       pushToast('Convidado adicionado', 'A lista de presença foi atualizada.');
     } catch (error) {

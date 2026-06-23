@@ -1,6 +1,6 @@
 import { Copy, Mail, Plus, Search, Trash2 } from 'lucide-react';
-import type { GuestStatus, GuestType, Party } from '@/domain/entities/party';
-import { guestStatuses, guestTypes } from '@/domain/constants/party.constants';
+import type { GuestStatus, GuestGroup, GuestType, Party } from '@/domain/entities/party';
+import { guestStatuses, guestGroups, guestTypes } from '@/domain/constants/party.constants';
 import { Button } from '@/presentation/components/ui/button';
 import { Field, Input } from '@/presentation/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/ui/select';
@@ -72,7 +72,21 @@ export function MobileGuestsSection({
   getMailtoUrl
 }: MobileGuestsSectionProps) {
   return (
-    <MobilePage title="Convidados" action={null} headerAction={headerAction}>
+    <MobilePage
+      title="Convidados"
+      action={
+        <button
+          className="celebra-action-fill flex h-9 items-center gap-2 rounded-[10px] px-4 text-sm font-bold text-white disabled:opacity-50"
+          disabled={!selectedParty || selectedPartyLocked}
+          onClick={() => setGuestDialogOpen(true)}
+          type="button"
+        >
+          <Plus size={16} />
+          Novo convidado
+        </button>
+      }
+      headerAction={headerAction}
+    >
       <MobilePartySelector
         parties={parties}
         selectedParty={selectedParty}
@@ -92,7 +106,14 @@ export function MobileGuestsSection({
               <Input required value={guestForm.name} onChange={(event) => setGuestForm((current) => ({ ...current, name: event.target.value }))} />
             </Field>
             <Field label="Grupo">
-              <Input required value={guestForm.group} onChange={(event) => setGuestForm((current) => ({ ...current, group: event.target.value }))} />
+              <Select value={guestForm.group} onValueChange={(value) => setGuestForm((current) => ({ ...current, group: value as GuestGroup }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {guestGroups.map((g) => (
+                    <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
             <Field label="Tipo de convidado">
               <Select value={guestForm.type} onValueChange={(value) => setGuestForm((current) => ({ ...current, type: value as GuestType }))}>
@@ -122,16 +143,6 @@ export function MobileGuestsSection({
           </form>
         </DialogContent>
       </Dialog>
-
-      <Button
-        className="celebra-action-fill h-12 rounded-[16px] text-white"
-        disabled={!selectedParty || selectedPartyLocked}
-        onClick={() => setGuestDialogOpen(true)}
-        type="button"
-      >
-        <Plus size={18} />
-        Novo convidado
-      </Button>
 
       <div className="rounded-[20px] border border-white/10 bg-[#101a2d] p-3 shadow-[0_12px_30px_rgba(0,0,0,0.24)]">
         <div className="flex items-center gap-2 rounded-[16px] bg-white/5 px-3">
@@ -167,7 +178,7 @@ export function MobileGuestsSection({
             <div className="min-w-0">
               <strong className="block truncate text-slate-50">{guest.name}</strong>
               <span className="text-sm text-slate-400">
-                {guest.group} | {getGuestTypeLabel(guest.type)}
+                {guestGroups.find((g) => g.value === guest.group)?.label ?? guest.group} | {getGuestTypeLabel(guest.type)}
               </span>
               {guest.email || guest.phoneNumber ? (
                 <span className="mt-1 block truncate text-xs text-slate-500">
