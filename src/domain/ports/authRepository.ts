@@ -1,18 +1,12 @@
 import type { AuthenticatedUser, AuthSession } from '@/domain/entities/auth';
 
-export type LoginInput = {
-  email: string;
-  password: string;
-};
-
-export type RegisterInput = {
-  name: string;
-  email: string;
-  password: string;
-};
+export type LoginInput = { email: string; password: string };
+export type RegisterInput = { name: string; email: string; password: string };
 
 export interface AuthRepository {
   login(input: LoginInput): Promise<AuthSession>;
   register(input: RegisterInput): Promise<AuthSession>;
   me(accessToken: string): Promise<AuthenticatedUser>;
+  forgotPassword(email: string): Promise<void>;
+  resetPassword(token: string, newPassword: string): Promise<void>;
 }
