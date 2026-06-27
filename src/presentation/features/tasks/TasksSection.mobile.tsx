@@ -105,7 +105,7 @@ export function MobileTasksSection({
                 <h2 className="text-base font-bold text-slate-50">{column.label}</h2>
                 <span className={cn('rounded-full border px-2.5 py-1 text-xs font-bold', column.tone)}>{tasks.length}</span>
               </div>
-              <div className="grid max-h-[390px] gap-2.5 overflow-y-auto overflow-x-hidden pr-1 [scrollbar-width:thin]">
+              <div className="grid gap-2.5">
                 {tasks.map((task) => (
                   <article className="rounded-[16px] border border-white/10 bg-panel p-3 shadow-[0_10px_24px_rgba(0,0,0,0.22)]" key={task.id}>
                     {editingTaskId === task.id ? (

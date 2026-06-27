@@ -1,8 +1,6 @@
 import { Camera, Plus, Trash2 } from 'lucide-react';
 import type * as React from 'react';
 
-import { GradientButton } from '@/presentation/components/nurui/gradient-button';
-
 import { partyCategories, maximumCurrencyAmount, maximumExpectedGuests, maximumPartyLocationLength } from '@/domain/constants/party.constants';
 import { getPartyCoverImage, getPartyCategoryLabel } from '@/domain/utils/party.utils';
 import { Button } from '@/presentation/components/ui/button';
@@ -63,13 +61,13 @@ export function CreatePartyDialog({
         {hiddenTrigger ? (
           <button className="hidden" onClick={() => onOpen()} type="button" />
         ) : (
-          <GradientButton onClick={() => onOpen()}>
+          <Button onClick={() => onOpen()} type="button" variant="premium">
             <Plus size={18} />
             {editingPartyId ? 'Editar festa' : 'Nova festa'}
-          </GradientButton>
+          </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="md:top-1/2 max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-b-none">
+      <DialogContent className="bottom-0 top-auto max-h-[92vh] w-full max-w-none translate-y-0 overflow-y-auto rounded-b-none rounded-t-[26px] border-white/10 bg-panel p-5 text-slate-50 sm:left-1/2 sm:top-1/2 sm:max-w-lg sm:-translate-y-1/2 sm:rounded-[22px]">
         <DialogHeader>
           <DialogTitle className="text-2xl font-semibold">{editingPartyId ? 'Editar festa' : 'Criar nova festa'}</DialogTitle>
           <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -203,13 +201,15 @@ export function CreatePartyDialog({
             </div>
           ) : null}
 
-          <GradientButton
+          <Button
             className="w-full"
             disabled={createParty.isPending || updateParty.isPending}
+            size="lg"
             type="submit"
+            variant="premium"
           >
             {editingPartyId ? 'Salvar alterações' : createParty.isPending ? 'Criando...' : 'Criar festa'}
-          </GradientButton>
+          </Button>
           {editingPartyId ? (
             <Button
               className="border border-rose-400/30 text-rose-200 hover:bg-rose-400/10 hover:text-rose-100"

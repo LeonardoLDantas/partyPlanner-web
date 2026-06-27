@@ -144,8 +144,9 @@ export function MobileMetricCard({
 }
 
 export function PartyInsightsChart({ compact = false, party }: { compact?: boolean; party: Party }) {
-  const confirmedGuests = party.guests.filter((guest) => guest.status === 'Confirmado').length;
-  const guestTarget = Math.max(party.expectedGuests, party.guests.length, 1);
+  const allGuests = party.convites.flatMap((c) => c.guests);
+  const confirmedGuests = allGuests.filter((guest) => guest.status === 'Confirmado').length;
+  const guestTarget = Math.max(party.expectedGuests, allGuests.length, 1);
   const completedPartyTasks = party.tasks.filter((task) => task.done).length;
   const taskTarget = Math.max(party.tasks.length, 1);
   const hasBudgetCeiling = party.budget.estimated !== null && party.budget.estimated > 0;
@@ -156,7 +157,7 @@ export function PartyInsightsChart({ compact = false, party }: { compact?: boole
     {
       label: 'Convidados confirmados',
       progress: Math.min(100, Math.round((confirmedGuests / guestTarget) * 100)),
-      value: `${confirmedGuests}/${party.expectedGuests || party.guests.length || 0}`
+      value: `${confirmedGuests}/${party.expectedGuests || allGuests.length || 0}`
     },
     {
       label: 'Tarefas concluídas',

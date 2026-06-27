@@ -57,8 +57,9 @@ export function MobileOverviewSection({
     mobileUpcomingParties[0] ??
     null;
   const party = activeMobileParty;
-  const confirmed = party?.guests.filter((guest) => guest.status === 'Confirmado').length ?? 0;
-  const expected = Math.max(party?.expectedGuests || 0, party?.guests.length || 0);
+  const allGuests = party?.convites.flatMap((c) => c.guests) ?? [];
+  const confirmed = allGuests.filter((guest) => guest.status === 'Confirmado').length;
+  const expected = Math.max(party?.expectedGuests || 0, allGuests.length);
   const guestProgress = expected > 0 ? Math.min(100, Math.round((confirmed / expected) * 100)) : 0;
   const budgetProgress =
     party && party.budget.estimated !== null && party.budget.estimated > 0

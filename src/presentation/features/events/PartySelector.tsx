@@ -2,7 +2,7 @@ import { CalendarDays } from 'lucide-react';
 import type * as React from 'react';
 
 import type { Party } from '@/domain/entities/party';
-import { getPartyCoverImage } from '@/domain/utils/party.utils';
+import { getPartyCoverImage, getDaysLeftLabel } from '@/domain/utils/party.utils';
 import { formatShortDateLabel } from '@/shared/utils/formatters';
 import { cn } from '@/shared/utils/cn';
 
@@ -55,11 +55,17 @@ export function DesktopPartySelector({
             >
               <img alt="" className="h-12 w-12 rounded-md object-cover" src={getPartyCoverImage(party)} />
               <span className="min-w-0">
-                <strong className="block truncate text-sm text-foreground">{party.name}</strong>
+                <span className="flex min-w-0 items-center gap-2">
+                  <strong className="block truncate text-sm text-foreground">{party.name}</strong>
+                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-400/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    {getDaysLeftLabel(party.date)}
+                  </span>
+                </span>
                 <span className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
                   <CalendarDays size={13} />
                   <span className="truncate">{formatShortDateLabel(party.date)}</span>
-                  {party.time ? <span className="shrink-0">as {party.time}</span> : null}
+                  {party.time ? <span className="shrink-0">às {party.time}</span> : null}
                 </span>
               </span>
             </button>

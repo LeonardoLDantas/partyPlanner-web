@@ -1,9 +1,12 @@
 import type {
   CreateBudgetItemInput,
+  CreateConviteInput,
   CreateGuestInput,
   CreatePartyInput,
   CreateTaskInput,
   PartyRepository,
+  UpdateConviteInput,
+  UpdateGuestInput,
   UpdateTaskInput,
   UpdatePartyInput
 } from '@/domain/ports/partyRepository';
@@ -18,82 +21,79 @@ export class HttpPartyRepository implements PartyRepository {
   }
 
   createParty(input: CreatePartyInput) {
-    return this.httpClient.request<Party>('/api/parties', {
-      method: 'POST',
-      body: JSON.stringify(input)
-    });
+    return this.httpClient.request<Party>('/api/parties', { method: 'POST', body: JSON.stringify(input) });
   }
 
   updateParty(partyId: string, input: UpdatePartyInput) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}`, {
-      method: 'PUT',
-      body: JSON.stringify(input)
-    });
+    return this.httpClient.request<Party>(`/api/parties/${partyId}`, { method: 'PUT', body: JSON.stringify(input) });
   }
 
   deleteParty(partyId: string) {
-    return this.httpClient.request<void>(`/api/parties/${partyId}`, {
-      method: 'DELETE'
-    });
+    return this.httpClient.request<void>(`/api/parties/${partyId}`, { method: 'DELETE' });
   }
 
   createTask(partyId: string, input: CreateTaskInput) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks`, {
-      method: 'POST',
-      body: JSON.stringify(input)
-    });
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks`, { method: 'POST', body: JSON.stringify(input) });
   }
 
   updateTask(partyId: string, taskId: string, input: UpdateTaskInput) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks/${taskId}`, {
-      method: 'PATCH',
-      body: JSON.stringify(input)
-    });
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify(input) });
   }
 
   deleteTask(partyId: string, taskId: string) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks/${taskId}`, {
-      method: 'DELETE'
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks/${taskId}`, { method: 'DELETE' });
+  }
+
+  toggleTask(partyId: string, taskId: string) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks/${taskId}/toggle`, { method: 'PATCH' });
+  }
+
+  createConvite(partyId: string, input: CreateConviteInput) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/convites`, {
+      method: 'POST',
+      body: JSON.stringify({ nome: input.nome, observacao: input.observacao, tipo: input.tipo, quantidadeSenhas: input.quantidadeSenhas, senhaPresente: input.senhaPresente })
     });
   }
 
-  createGuest(partyId: string, input: CreateGuestInput) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}/guests`, {
+  updateConvite(partyId: string, conviteId: string, input: UpdateConviteInput) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/convites/${conviteId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ nome: input.nome, observacao: input.observacao, tipo: input.tipo, senhaPresente: input.senhaPresente })
+    });
+  }
+
+  deleteConvite(partyId: string, conviteId: string) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/convites/${conviteId}`, { method: 'DELETE' });
+  }
+
+  addGuestToConvite(partyId: string, conviteId: string, input: CreateGuestInput) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/convites/${conviteId}/guests`, {
       method: 'POST',
       body: JSON.stringify(input)
     });
   }
 
-  deleteGuest(partyId: string, guestId: string) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}/guests/${guestId}`, {
-      method: 'DELETE'
-    });
-  }
-
-  createBudgetItem(partyId: string, input: CreateBudgetItemInput) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}/budget-items`, {
-      method: 'POST',
-      body: JSON.stringify(input)
-    });
-  }
-
-  updateBudgetItem(partyId: string, budgetItemId: string, input: CreateBudgetItemInput) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}/budget-items/${budgetItemId}`, {
+  updateGuestInConvite(partyId: string, conviteId: string, guestId: string, input: UpdateGuestInput) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/convites/${conviteId}/guests/${guestId}`, {
       method: 'PUT',
       body: JSON.stringify(input)
     });
   }
 
-  deleteBudgetItem(partyId: string, budgetItemId: string) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}/budget-items/${budgetItemId}`, {
-      method: 'DELETE'
-    });
+  deleteGuestFromConvite(partyId: string, conviteId: string, guestId: string) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/convites/${conviteId}/guests/${guestId}`, { method: 'DELETE' });
   }
 
-  toggleTask(partyId: string, taskId: string) {
-    return this.httpClient.request<Party>(`/api/parties/${partyId}/tasks/${taskId}/toggle`, {
-      method: 'PATCH'
-    });
+  createBudgetItem(partyId: string, input: CreateBudgetItemInput) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/budget-items`, { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  updateBudgetItem(partyId: string, budgetItemId: string, input: CreateBudgetItemInput) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/budget-items/${budgetItemId}`, { method: 'PUT', body: JSON.stringify(input) });
+  }
+
+  deleteBudgetItem(partyId: string, budgetItemId: string) {
+    return this.httpClient.request<Party>(`/api/parties/${partyId}/budget-items/${budgetItemId}`, { method: 'DELETE' });
   }
 
   getInvitation(token: string) {

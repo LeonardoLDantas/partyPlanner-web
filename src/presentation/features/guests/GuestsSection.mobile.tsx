@@ -1,9 +1,10 @@
-import { Copy, Mail, Plus, Search, Trash2 } from 'lucide-react';
-import type { GuestStatus, GuestType, Party } from '@/domain/entities/party';
-import { guestStatuses, guestTypes } from '@/domain/constants/party.constants';
+import { Copy, Edit2, Key, Mail, Plus, Ticket, Trash2, Users } from 'lucide-react';
+import type * as React from 'react';
+
+import type { GuestGroup, GuestStatus, GuestType, InviteType, Party } from '@/domain/entities/party';
+import { inviteTypes, guestGroups, guestStatuses, guestTypes } from '@/domain/constants/party.constants';
+import { Badge } from '@/presentation/components/ui/badge';
 import { Button } from '@/presentation/components/ui/button';
-import { Field, Input } from '@/presentation/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -11,17 +12,32 @@ import {
   DialogHeader,
   DialogTitle
 } from '@/presentation/components/ui/dialog';
+import { Field, Input } from '@/presentation/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/presentation/components/ui/select';
 import { MobilePage } from '@/presentation/layout/MobilePage';
 import { MobilePartySelector } from '@/presentation/features/events/PartySelector';
 import type { DashboardState } from '@/presentation/hooks/useDashboardState';
 import { formatBrazilPhoneInput, getGuestStatusBadgeClass, getGuestTypeLabel } from '@/shared/utils/formatters';
 import { WhatsappIcon } from '@/presentation/components/icons/WhatsappIcon';
-import { cn } from '@/shared/utils/cn';
-import type * as React from 'react';
+
+const inviteTypeColors: Record<InviteType, string> = {
+  Familia:  'border-violet-400/30 bg-violet-400/10 text-violet-200',
+  Amigos:   'border-sky-400/30 bg-sky-400/10 text-sky-200',
+  Trabalho: 'border-amber-400/30 bg-amber-400/10 text-amber-200',
+  Outro:    'border-slate-400/30 bg-slate-400/10 text-slate-200'
+};
 
 type MobileGuestsSectionProps = {
   selectedParty: DashboardState['selectedParty'];
   selectedPartyLocked: DashboardState['selectedPartyLocked'];
+  selectedConvite: DashboardState['selectedConvite'];
+  selectedConviteId: DashboardState['selectedConviteId'];
+  setSelectedConviteId: DashboardState['setSelectedConviteId'];
+  conviteDialogOpen: DashboardState['conviteDialogOpen'];
+  setConviteDialogOpen: DashboardState['setConviteDialogOpen'];
+  editingConviteId: DashboardState['editingConviteId'];
+  conviteForm: DashboardState['conviteForm'];
+  setConviteForm: DashboardState['setConviteForm'];
   filteredGuests: DashboardState['filteredGuests'];
   guestSearch: DashboardState['guestSearch'];
   setGuestSearch: DashboardState['setGuestSearch'];
@@ -29,11 +45,16 @@ type MobileGuestsSectionProps = {
   setGuestFilter: DashboardState['setGuestFilter'];
   guestDialogOpen: DashboardState['guestDialogOpen'];
   setGuestDialogOpen: DashboardState['setGuestDialogOpen'];
+  editingGuestId: DashboardState['editingGuestId'];
   guestForm: DashboardState['guestForm'];
   setGuestForm: DashboardState['setGuestForm'];
   parties: DashboardState['parties'];
-  createGuest: DashboardState['createGuest'];
-  deleteGuest: DashboardState['deleteGuest'];
+  createConvite: DashboardState['createConvite'];
+  updateConvite: DashboardState['updateConvite'];
+  deleteConvite: DashboardState['deleteConvite'];
+  addGuestToConvite: DashboardState['addGuestToConvite'];
+  updateGuestInConvite: DashboardState['updateGuestInConvite'];
+  deleteGuestFromConvite: DashboardState['deleteGuestFromConvite'];
   headerAction: React.ReactNode;
   partySelectorProps: {
     onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
@@ -41,9 +62,14 @@ type MobileGuestsSectionProps = {
     onPointerUp: () => void;
     onPartyClick: (partyId: string) => void;
   };
-  onCreateGuest: (event: React.FormEvent<HTMLFormElement>) => void;
-  onDeleteGuest: (guest: Party['guests'][number]) => void;
-  onCopyInvitationLink: (guestName: string, invitationToken: string) => void;
+  openCreateConviteDialog: DashboardState['openCreateConviteDialog'];
+  openEditConviteDialog: DashboardState['openEditConviteDialog'];
+  handleSaveConvite: DashboardState['handleSaveConvite'];
+  handleDeleteConvite: (id: string) => void;
+  handleCreateGuest: DashboardState['handleCreateGuest'];
+  startGuestEdit: DashboardState['startGuestEdit'];
+  handleDeleteGuest: (guest: Party['convites'][number]['guests'][number]) => void;
+  handleCopyInvitationLink: (name: string, token: string) => void;
   getWhatsappUrl: DashboardState['getWhatsappUrl'];
   getMailtoUrl: DashboardState['getMailtoUrl'];
 };
@@ -51,6 +77,14 @@ type MobileGuestsSectionProps = {
 export function MobileGuestsSection({
   selectedParty,
   selectedPartyLocked,
+  selectedConvite,
+  selectedConviteId,
+  setSelectedConviteId,
+  conviteDialogOpen,
+  setConviteDialogOpen,
+  editingConviteId,
+  conviteForm,
+  setConviteForm,
   filteredGuests,
   guestSearch,
   setGuestSearch,
@@ -58,168 +92,335 @@ export function MobileGuestsSection({
   setGuestFilter,
   guestDialogOpen,
   setGuestDialogOpen,
+  editingGuestId,
   guestForm,
   setGuestForm,
   parties,
-  createGuest,
-  deleteGuest,
-  headerAction,
-  partySelectorProps,
-  onCreateGuest,
-  onDeleteGuest,
-  onCopyInvitationLink,
+  createConvite,
+  updateConvite,
+  openCreateConviteDialog,
+  openEditConviteDialog,
+  handleSaveConvite,
+  handleDeleteConvite,
+  handleCreateGuest,
+  startGuestEdit,
+  handleDeleteGuest,
+  handleCopyInvitationLink,
   getWhatsappUrl,
-  getMailtoUrl
+  getMailtoUrl,
+  headerAction,
+  partySelectorProps
 }: MobileGuestsSectionProps) {
+  const convites = selectedParty?.convites ?? [];
+
   return (
-    <MobilePage title="Convidados" action={null} headerAction={headerAction}>
+    <MobilePage
+      headerAction={headerAction}
+      title="Convidados"
+      actions={
+        selectedParty && !selectedPartyLocked ? (
+          <Button onClick={openCreateConviteDialog} size="sm" variant="premium">
+            <Plus size={15} /> Novo convite
+          </Button>
+        ) : null
+      }
+    >
+      {/* Party selector */}
       <MobilePartySelector
         parties={parties}
-        selectedParty={selectedParty}
-        {...partySelectorProps}
+        selectedPartyId={selectedParty?.id ?? ''}
+        onPointerDown={partySelectorProps.onPointerDown}
+        onPointerMove={partySelectorProps.onPointerMove}
+        onPointerUp={partySelectorProps.onPointerUp}
+        onPartyClick={partySelectorProps.onPartyClick}
       />
 
-      <Dialog open={guestDialogOpen} onOpenChange={setGuestDialogOpen}>
-        <DialogContent className="bottom-0 top-auto max-h-[86vh] w-full max-w-none translate-y-0 rounded-b-none rounded-t-[26px] border-white/10 bg-panel p-5 text-slate-50 sm:left-1/2 sm:top-1/2 sm:max-w-md sm:-translate-y-1/2 sm:rounded-[22px]">
+      <div className="px-4 pb-24">
+        {/* Summary */}
+        {selectedParty ? (
+          <p className="mb-3 text-sm text-muted-foreground">
+            {convites.length} convite{convites.length !== 1 ? 's' : ''} · {convites.flatMap((c) => c.guests).length} convidado{convites.flatMap((c) => c.guests).length !== 1 ? 's' : ''} · {convites.flatMap((c) => c.guests).filter((g) => g.status === 'Confirmado').length} confirmado{convites.flatMap((c) => c.guests).filter((g) => g.status === 'Confirmado').length !== 1 ? 's' : ''}
+          </p>
+        ) : null}
+
+        {/* Convite cards */}
+        {convites.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-12 text-center">
+            <Ticket className="text-muted-foreground" size={32} />
+            <p className="text-sm text-muted-foreground">Nenhum convite criado ainda.</p>
+            {selectedParty && !selectedPartyLocked ? (
+              <Button onClick={openCreateConviteDialog} size="sm" variant="outline">
+                <Plus size={14} /> Criar convite
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <div className="mb-4 grid gap-3">
+            {convites.map((convite) => {
+              const isSelected = convite.id === (selectedConviteId || convites[0]?.id);
+              const typeLabel = inviteTypes.find((t) => t.value === convite.tipo)?.label ?? convite.tipo;
+              return (
+                <button
+                  className={`flex w-full flex-col gap-2 rounded-xl border p-4 text-left transition-all ${isSelected ? 'border-brand/50 bg-brand/8 ring-1 ring-brand/30' : 'border-border bg-muted/30'}`}
+                  key={convite.id}
+                  onClick={() => setSelectedConviteId(convite.id)}
+                  type="button"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{convite.nome}</p>
+                      {convite.observacao ? (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">{convite.observacao}</p>
+                      ) : null}
+                    </div>
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ${inviteTypeColors[convite.tipo]}`}>
+                      {typeLabel}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Users size={12} /> {convite.guests.length} convidado{convite.guests.length !== 1 ? 's' : ''}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Key size={12} /> {convite.senhas.length} senha{convite.senhas.length !== 1 ? 's' : ''}
+                    </span>
+                    {convite.senhaPresente ? (
+                      <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2 py-0.5 text-[0.65rem] text-emerald-300">
+                        Senha presente
+                      </span>
+                    ) : null}
+                  </div>
+                  {!selectedPartyLocked ? (
+                    <div className="flex justify-end gap-2">
+                      <button
+                        className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-white/10 hover:text-foreground"
+                        onClick={(e) => { e.stopPropagation(); openEditConviteDialog(convite.id); }}
+                        type="button"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteConvite(convite.id); }}
+                        type="button"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Selected convite — access codes */}
+        {selectedConvite ? (
+          <div className="mb-4 rounded-xl border border-border bg-muted/20 p-4">
+            <p className="mb-2 text-sm font-semibold">Códigos de acesso</p>
+            <div className="flex flex-wrap gap-2">
+              {selectedConvite.senhas.map((s) => (
+                <span
+                  className="cursor-pointer rounded-md border border-white/10 bg-white/8 px-3 py-1 font-mono text-sm tracking-widest text-sky-300"
+                  key={s.id}
+                  onClick={() => navigator.clipboard.writeText(s.codigo)}
+                  title="Toque para copiar"
+                >
+                  {s.codigo}
+                </span>
+              ))}
+            </div>
+            {selectedConvite.senhaPresente ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Senha presente: <span className="font-mono text-emerald-300">{selectedConvite.senhaPresente}</span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Guest list for selected convite */}
+        {selectedConvite ? (
+          <div>
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-sm font-semibold">Convidados — {selectedConvite.nome}</p>
+              {!selectedPartyLocked ? (
+                <Button onClick={() => setGuestDialogOpen(true)} size="sm" variant="outline">
+                  <Plus size={13} /> Adicionar
+                </Button>
+              ) : null}
+            </div>
+
+            {/* Search + filter */}
+            <div className="mb-3 grid gap-2">
+              <Input
+                className="h-9"
+                placeholder="Buscar convidado"
+                value={guestSearch}
+                onChange={(e) => setGuestSearch(e.target.value)}
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {(['Todos', ...guestStatuses] as const).map((s) => (
+                  <button
+                    className={`rounded-full border px-3 py-0.5 text-xs font-semibold transition-colors ${guestFilter === s ? 'border-brand bg-brand/20 text-brand' : 'border-border text-muted-foreground hover:border-white/30'}`}
+                    key={s}
+                    onClick={() => setGuestFilter(s as 'Todos' | GuestStatus)}
+                    type="button"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {filteredGuests.length === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Nenhum convidado encontrado.</p>
+            ) : (
+              <div className="grid gap-3">
+                {filteredGuests.map((guest) => (
+                  <div className="rounded-xl border border-border bg-muted/40 p-4" key={guest.id}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <strong className="text-sm">{guest.name}</strong>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {guestGroups.find((g) => g.value === guest.group)?.label ?? guest.group} · {getGuestTypeLabel(guest.type)}
+                        </p>
+                        {guest.email || guest.phoneNumber ? (
+                          <p className="mt-0.5 text-xs text-muted-foreground">{[guest.email, guest.phoneNumber].filter(Boolean).join(' · ')}</p>
+                        ) : null}
+                      </div>
+                      <Badge className={getGuestStatusBadgeClass(guest.status)}>{guest.status}</Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        className="flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold hover:bg-white/10"
+                        onClick={() => handleCopyInvitationLink(guest.name, guest.invitationToken)}
+                        type="button"
+                      >
+                        <Copy size={12} /> Link
+                      </button>
+                      {guest.phoneNumber ? (
+                        <a
+                          className="flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold hover:bg-white/10"
+                          href={getWhatsappUrl(guest.phoneNumber, guest.name, guest.invitationToken)}
+                          rel="noreferrer"
+                          target="_blank"
+                        >
+                          <WhatsappIcon size={12} /> WhatsApp
+                        </a>
+                      ) : null}
+                      {guest.email ? (
+                        <a
+                          className="flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold hover:bg-white/10"
+                          href={getMailtoUrl(guest.email, guest.name, guest.invitationToken)}
+                        >
+                          <Mail size={12} /> Email
+                        </a>
+                      ) : null}
+                      {!selectedPartyLocked ? (
+                        <>
+                          <button
+                            className="flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-semibold hover:bg-white/10"
+                            onClick={() => startGuestEdit(guest)}
+                            type="button"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button
+                            className="flex h-8 items-center gap-1.5 rounded-md border border-destructive/30 px-3 text-xs font-semibold text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteGuest(guest)}
+                            type="button"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Convite dialog */}
+      <Dialog open={conviteDialogOpen} onOpenChange={setConviteDialogOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold">Novo convidado</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              {selectedParty ? `Convite para ${selectedParty.name}` : 'Selecione uma festa para continuar.'}
-            </DialogDescription>
+            <DialogTitle>{editingConviteId ? 'Editar convite' : 'Novo convite'}</DialogTitle>
+            <DialogDescription>Preencha os dados do convite.</DialogDescription>
           </DialogHeader>
-          <form className="grid gap-3" onSubmit={onCreateGuest}>
-            <Field label="Nome">
-              <Input required value={guestForm.name} onChange={(event) => setGuestForm((current) => ({ ...current, name: event.target.value }))} />
+          <form className="grid gap-3" onSubmit={handleSaveConvite}>
+            <Field label="Nome do convite">
+              <Input required value={conviteForm.nome} onChange={(e) => setConviteForm((cur) => ({ ...cur, nome: e.target.value }))} placeholder="Ex: Família Silva" />
             </Field>
-            <Field label="Grupo">
-              <Input required value={guestForm.group} onChange={(event) => setGuestForm((current) => ({ ...current, group: event.target.value }))} />
+            <Field label="Observação">
+              <Input value={conviteForm.observacao} onChange={(e) => setConviteForm((cur) => ({ ...cur, observacao: e.target.value }))} placeholder="Opcional" />
             </Field>
-            <Field label="Tipo de convidado">
-              <Select value={guestForm.type} onValueChange={(value) => setGuestForm((current) => ({ ...current, type: value as GuestType }))}>
+            <Field label="Tipo">
+              <Select value={conviteForm.tipo} onValueChange={(v) => setConviteForm((cur) => ({ ...cur, tipo: v as InviteType }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {guestTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                  ))}
+                  {inviteTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Email">
-              <Input inputMode="email" placeholder="nome@email.com" value={guestForm.email} onChange={(event) => setGuestForm((current) => ({ ...current, email: event.target.value }))} />
+            {!editingConviteId ? (
+              <Field label="Quantidade de senhas">
+                <Input min="1" max="100" type="number" value={conviteForm.quantidadeSenhas} onChange={(e) => setConviteForm((cur) => ({ ...cur, quantidadeSenhas: e.target.value }))} />
+              </Field>
+            ) : null}
+            <Field label="Senha presente (opcional)">
+              <Input value={conviteForm.senhaPresente} onChange={(e) => setConviteForm((cur) => ({ ...cur, senhaPresente: e.target.value }))} placeholder="Ex: PRESENTE2026" />
             </Field>
-            <Field label="Celular">
-              <Input
-                inputMode="tel"
-                placeholder="+55 (11) 99999-9999"
-                value={guestForm.phoneNumber}
-                onChange={(event) => setGuestForm((current) => ({ ...current, phoneNumber: formatBrazilPhoneInput(event.target.value) }))}
-              />
-            </Field>
-            <Button disabled={!selectedParty || selectedPartyLocked || createGuest.isPending} type="submit" variant="premium">
-              <Plus size={18} />
-              Adicionar convidado
-            </Button>
+            <div className="flex gap-2">
+              <Button className="flex-1" disabled={createConvite.isPending || updateConvite.isPending} type="submit" variant="premium">
+                {editingConviteId ? 'Salvar' : 'Criar convite'}
+              </Button>
+              <Button onClick={() => setConviteDialogOpen(false)} type="button" variant="outline">Cancelar</Button>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      <Button
-        className="celebra-action-fill h-12 rounded-[16px] text-white"
-        disabled={!selectedParty || selectedPartyLocked}
-        onClick={() => setGuestDialogOpen(true)}
-        type="button"
-      >
-        <Plus size={18} />
-        Novo convidado
-      </Button>
-
-      <div className="rounded-[20px] border border-white/10 bg-[#101a2d] p-3 shadow-[0_12px_30px_rgba(0,0,0,0.24)]">
-        <div className="flex items-center gap-2 rounded-[16px] bg-white/5 px-3">
-          <Search className="text-slate-400" size={18} />
-          <input
-            className="h-11 min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-50 outline-none placeholder:text-slate-500"
-            placeholder="Buscar convidado"
-            value={guestSearch}
-            onChange={(event) => setGuestSearch(event.target.value)}
-          />
-        </div>
-      </div>
-
-      <div className="flex max-w-full gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {['Todos', ...guestStatuses].map((status) => (
-          <button
-            className={cn(
-              'shrink-0 rounded-full px-4 py-2 text-sm font-bold',
-              guestFilter === status ? 'bg-[#0f6edb] text-white' : 'border border-white/10 bg-white/10 text-slate-300'
-            )}
-            key={status}
-            onClick={() => setGuestFilter(status as 'Todos' | GuestStatus)}
-            type="button"
-          >
-            {status}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-2.5">
-        {filteredGuests.map((guest) => (
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-[18px] border border-white/10 bg-[#101a2d] p-3 shadow-[0_10px_26px_rgba(0,0,0,0.22)]" key={guest.id}>
-            <div className="min-w-0">
-              <strong className="block truncate text-slate-50">{guest.name}</strong>
-              <span className="text-sm text-slate-400">
-                {guest.group} | {getGuestTypeLabel(guest.type)}
-              </span>
-              {guest.email || guest.phoneNumber ? (
-                <span className="mt-1 block truncate text-xs text-slate-500">
-                  {[guest.email, guest.phoneNumber].filter(Boolean).join(' | ')}
-                </span>
-              ) : null}
+      {/* Guest dialog */}
+      <Dialog open={guestDialogOpen} onOpenChange={setGuestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingGuestId ? 'Editar convidado' : 'Novo convidado'}</DialogTitle>
+            <DialogDescription>Convite: {selectedConvite?.nome ?? '—'}</DialogDescription>
+          </DialogHeader>
+          <form className="grid gap-3" onSubmit={handleCreateGuest}>
+            <Field label="Nome">
+              <Input required value={guestForm.name} onChange={(e) => setGuestForm((cur) => ({ ...cur, name: e.target.value }))} />
+            </Field>
+            <Field label="Grupo">
+              <Select value={guestForm.group} onValueChange={(v) => setGuestForm((cur) => ({ ...cur, group: v as GuestGroup }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{guestGroups.map((g) => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+            <Field label="Tipo">
+              <Select value={guestForm.type} onValueChange={(v) => setGuestForm((cur) => ({ ...cur, type: v as GuestType }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>{guestTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </Field>
+            <Field label="Email">
+              <Input inputMode="email" placeholder="nome@email.com" value={guestForm.email} onChange={(e) => setGuestForm((cur) => ({ ...cur, email: e.target.value }))} />
+            </Field>
+            <Field label="Celular">
+              <Input inputMode="tel" placeholder="+55 (11) 99999-9999" value={guestForm.phoneNumber} onChange={(e) => setGuestForm((cur) => ({ ...cur, phoneNumber: formatBrazilPhoneInput(e.target.value) }))} />
+            </Field>
+            <div className="flex gap-2">
+              <Button className="flex-1" type="submit" variant="premium">
+                {editingGuestId ? 'Salvar' : 'Adicionar'}
+              </Button>
+              <Button onClick={() => setGuestDialogOpen(false)} type="button" variant="outline">Cancelar</Button>
             </div>
-            <div className="grid shrink-0 justify-items-end gap-1.5">
-              <span className={cn('rounded-full border px-3 py-1.5 text-xs font-bold', getGuestStatusBadgeClass(guest.status))}>
-                {guest.status}
-              </span>
-              <button
-                className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-3 py-1.5 text-xs font-bold text-slate-200"
-                onClick={() => onCopyInvitationLink(guest.name, guest.invitationToken)}
-                type="button"
-              >
-                <Copy size={13} />
-                Link
-              </button>
-              <div className="flex gap-1">
-                {guest.email ? (
-                  <a
-                    className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/10 text-slate-200"
-                    href={getMailtoUrl(guest.email, guest.name, guest.invitationToken)}
-                  >
-                    <Mail size={14} />
-                  </a>
-                ) : null}
-                {guest.phoneNumber ? (
-                  <a
-                    className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/10 text-slate-200"
-                    href={getWhatsappUrl(guest.phoneNumber, guest.name, guest.invitationToken)}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    <WhatsappIcon size={14} />
-                  </a>
-                ) : null}
-                <button
-                  className="grid h-8 w-8 place-items-center rounded-full border border-rose-400/30 bg-rose-400/10 text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={selectedPartyLocked || deleteGuest.isPending}
-                  onClick={() => onDeleteGuest(guest)}
-                  type="button"
-                  title="Excluir convidado"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </MobilePage>
   );
 }

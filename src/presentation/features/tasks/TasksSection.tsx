@@ -245,10 +245,14 @@ export function TaskCreateDialog({
   return (
     <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
       <DialogTrigger asChild>
-        <Button disabled={!selectedParty || selectedPartyLocked} variant="premium">
-          <Plus size={18} />
+        <button
+          className="celebra-action-fill flex h-9 items-center gap-2 rounded-[10px] px-4 text-sm font-bold text-white disabled:opacity-50"
+          disabled={!selectedParty || selectedPartyLocked}
+          type="button"
+        >
+          <Plus size={16} />
           Nova tarefa
-        </Button>
+        </button>
       </DialogTrigger>
       <DialogContent className="max-h-[88dvh] overflow-y-auto md:top-1/2 max-md:bottom-0 max-md:top-auto max-md:translate-y-0 max-md:rounded-b-none">
         <DialogHeader>

@@ -136,7 +136,7 @@ function SelectedPartySummary({
         <div className="grid gap-3 md:grid-cols-3">
           <MetricPanel label="Orçamento" value={formatOptionalBudget(party.budget.estimated)} />
           <MetricPanel label="Gasto atual" value={currencyFormatter.format(party.budget.spent)} />
-          <MetricPanel label="Convidados" value={`${party.guests.length}/${party.expectedGuests}`} />
+          <MetricPanel label="Convidados" value={`${party.convites.flatMap((c) => c.guests).length}/${party.expectedGuests}`} />
         </div>
         <div className="flex flex-wrap gap-2">
           <Button className="w-full md:w-fit" onClick={() => onEdit(party)} type="button" variant="outline">
