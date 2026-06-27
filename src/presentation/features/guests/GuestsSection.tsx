@@ -1,7 +1,6 @@
 import { Copy, Edit2, Key, Mail, Plus, Ticket, Trash2, Users } from 'lucide-react';
-import { useState } from 'react';
 
-import type { Convite, Party } from '@/domain/entities/party';
+import type { GuestGroup, GuestStatus, GuestType, InviteType } from '@/domain/entities/party';
 import { inviteTypes, guestGroups, guestStatuses, guestTypes } from '@/domain/constants/party.constants';
 import { Badge } from '@/presentation/components/ui/badge';
 import { Button } from '@/presentation/components/ui/button';
@@ -12,7 +11,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/presentation/components/ui/tabs';
 import type { DashboardState } from '@/presentation/hooks/useDashboardState';
 import { formatBrazilPhoneInput, getGuestStatusBadgeClass, getGuestTypeLabel } from '@/shared/utils/formatters';
 import { WhatsappIcon } from '@/presentation/components/icons/WhatsappIcon';
-import type { GuestGroup, GuestStatus, GuestType, InviteType } from '@/domain/entities/party';
 
 const inviteTypeColors: Record<InviteType, string> = {
   Familia:  'border-violet-400/30 bg-violet-400/10 text-violet-200',
@@ -51,11 +49,11 @@ type GuestsSectionProps = {
   openCreateConviteDialog: DashboardState['openCreateConviteDialog'];
   openEditConviteDialog: DashboardState['openEditConviteDialog'];
   handleSaveConvite: DashboardState['handleSaveConvite'];
-  handleDeleteConvite: DashboardState['handleDeleteConvite'];
+  handleDeleteConvite: (id: string) => void;
   handleCreateGuest: DashboardState['handleCreateGuest'];
   startGuestEdit: DashboardState['startGuestEdit'];
-  handleDeleteGuest: DashboardState['handleDeleteGuest'];
-  handleCopyInvitationLink: DashboardState['handleCopyInvitationLink'];
+  handleDeleteGuest: (guest: Parameters<DashboardState['handleDeleteGuest']>[0]) => void;
+  handleCopyInvitationLink: (name: string, token: string) => void;
   getWhatsappUrl: DashboardState['getWhatsappUrl'];
   getMailtoUrl: DashboardState['getMailtoUrl'];
 };

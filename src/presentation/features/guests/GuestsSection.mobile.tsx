@@ -117,7 +117,7 @@ export function MobileGuestsSection({
     <MobilePage
       headerAction={headerAction}
       title="Convidados"
-      actions={
+      action={
         selectedParty && !selectedPartyLocked ? (
           <Button onClick={openCreateConviteDialog} size="sm" variant="premium">
             <Plus size={15} /> Novo convite
@@ -128,7 +128,7 @@ export function MobileGuestsSection({
       {/* Party selector */}
       <MobilePartySelector
         parties={parties}
-        selectedPartyId={selectedParty?.id ?? ''}
+        selectedParty={selectedParty}
         onPointerDown={partySelectorProps.onPointerDown}
         onPointerMove={partySelectorProps.onPointerMove}
         onPointerUp={partySelectorProps.onPointerUp}
