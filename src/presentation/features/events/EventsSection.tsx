@@ -163,7 +163,8 @@ function EventDetailPanel({
   onEdit: (party: Party) => void;
   onToggleFinalized: (party: Party) => void;
 }) {
-  const confirmed = party.guests.filter((g) => g.status === 'Confirmado').length;
+  const allGuests = party.convites.flatMap((c) => c.guests);
+  const confirmed = allGuests.filter((g) => g.status === 'Confirmado').length;
   const progress = getPartyProgress(party);
   const doneTasks = party.tasks.filter((t) => t.done).length;
 
@@ -259,13 +260,13 @@ function EventDetailPanel({
       ) : null}
 
       {/* Guest list preview */}
-      {party.guests.length > 0 ? (
+      {allGuests.length > 0 ? (
         <div>
           <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-            Convidados ({party.guests.length})
+            Convidados ({allGuests.length})
           </h3>
           <div className="grid max-h-48 gap-2 overflow-y-auto [scrollbar-width:thin]">
-            {party.guests.slice(0, 10).map((guest) => (
+            {allGuests.slice(0, 10).map((guest) => (
               <div className="flex items-center gap-2.5 text-sm" key={guest.id}>
                 <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
                   {guest.name.slice(0, 2).toUpperCase()}
@@ -283,9 +284,9 @@ function EventDetailPanel({
                 </span>
               </div>
             ))}
-            {party.guests.length > 10 ? (
+            {allGuests.length > 10 ? (
               <p className="text-center text-xs text-muted-foreground">
-                +{party.guests.length - 10} convidados
+                +{allGuests.length - 10} convidados
               </p>
             ) : null}
           </div>

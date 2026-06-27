@@ -19,7 +19,8 @@ type PartyCardProps = {
 };
 
 export function PartyCard({ party, index, isActive, onSelect, onEdit, onToggleFinalized }: PartyCardProps) {
-  const confirmed = party.guests.filter((guest) => guest.status === 'Confirmado').length;
+  const allGuests = party.convites.flatMap((c) => c.guests);
+  const confirmed = allGuests.filter((guest) => guest.status === 'Confirmado').length;
   const progress = getPartyProgress(party);
 
   return (

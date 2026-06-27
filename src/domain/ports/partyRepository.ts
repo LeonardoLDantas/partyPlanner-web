@@ -1,4 +1,4 @@
-import type { GuestType, Invitation, Party } from '@/domain/entities/party';
+import type { GuestGroup, GuestType, InviteType, Invitation, Party } from '@/domain/entities/party';
 
 export type CreatePartyInput = {
   name: string;
@@ -29,13 +29,30 @@ export type UpdateTaskInput = {
   status?: string;
 };
 
+export type CreateConviteInput = {
+  nome: string;
+  observacao?: string;
+  tipo: InviteType;
+  quantidadeSenhas: number;
+  senhaPresente?: string;
+};
+
+export type UpdateConviteInput = {
+  nome: string;
+  observacao?: string;
+  tipo: InviteType;
+  senhaPresente?: string;
+};
+
 export type CreateGuestInput = {
   name: string;
-  group: string;
+  group: GuestGroup;
   type: GuestType;
   email?: string;
   phoneNumber?: string;
 };
+
+export type UpdateGuestInput = CreateGuestInput;
 
 export type CreateBudgetItemInput = {
   label: string;
@@ -52,12 +69,16 @@ export interface PartyRepository {
   createTask(partyId: string, input: CreateTaskInput): Promise<Party>;
   updateTask(partyId: string, taskId: string, input: UpdateTaskInput): Promise<Party>;
   deleteTask(partyId: string, taskId: string): Promise<Party>;
-  createGuest(partyId: string, input: CreateGuestInput): Promise<Party>;
-  deleteGuest(partyId: string, guestId: string): Promise<Party>;
+  toggleTask(partyId: string, taskId: string): Promise<Party>;
+  createConvite(partyId: string, input: CreateConviteInput): Promise<Party>;
+  updateConvite(partyId: string, conviteId: string, input: UpdateConviteInput): Promise<Party>;
+  deleteConvite(partyId: string, conviteId: string): Promise<Party>;
+  addGuestToConvite(partyId: string, conviteId: string, input: CreateGuestInput): Promise<Party>;
+  updateGuestInConvite(partyId: string, conviteId: string, guestId: string, input: UpdateGuestInput): Promise<Party>;
+  deleteGuestFromConvite(partyId: string, conviteId: string, guestId: string): Promise<Party>;
   createBudgetItem(partyId: string, input: CreateBudgetItemInput): Promise<Party>;
   updateBudgetItem(partyId: string, budgetItemId: string, input: CreateBudgetItemInput): Promise<Party>;
   deleteBudgetItem(partyId: string, budgetItemId: string): Promise<Party>;
-  toggleTask(partyId: string, taskId: string): Promise<Party>;
   getInvitation(token: string): Promise<Invitation>;
   respondInvitation(token: string, status: 'Confirmado' | 'Recusou'): Promise<Invitation>;
 }

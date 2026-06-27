@@ -153,6 +153,14 @@ export function PlannerDashboard({
                 <MobileGuestsSection
                   selectedParty={state.selectedParty}
                   selectedPartyLocked={state.selectedPartyLocked}
+                  selectedConvite={state.selectedConvite}
+                  selectedConviteId={state.selectedConviteId}
+                  setSelectedConviteId={state.setSelectedConviteId}
+                  conviteDialogOpen={state.conviteDialogOpen}
+                  setConviteDialogOpen={state.setConviteDialogOpen}
+                  editingConviteId={state.editingConviteId}
+                  conviteForm={state.conviteForm}
+                  setConviteForm={state.setConviteForm}
                   filteredGuests={state.filteredGuests}
                   guestSearch={state.guestSearch}
                   setGuestSearch={state.setGuestSearch}
@@ -160,16 +168,26 @@ export function PlannerDashboard({
                   setGuestFilter={state.setGuestFilter}
                   guestDialogOpen={state.guestDialogOpen}
                   setGuestDialogOpen={state.setGuestDialogOpen}
+                  editingGuestId={state.editingGuestId}
                   guestForm={state.guestForm}
                   setGuestForm={state.setGuestForm}
                   parties={state.parties}
-                  createGuest={state.createGuest}
-                  deleteGuest={state.deleteGuest}
+                  createConvite={state.createConvite}
+                  updateConvite={state.updateConvite}
+                  deleteConvite={state.deleteConvite}
+                  addGuestToConvite={state.addGuestToConvite}
+                  updateGuestInConvite={state.updateGuestInConvite}
+                  deleteGuestFromConvite={state.deleteGuestFromConvite}
                   headerAction={mobileHeaderAction}
                   partySelectorProps={partySelectorProps}
-                  onCreateGuest={state.handleCreateGuest}
-                  onDeleteGuest={(guest) => void state.handleDeleteGuest(guest)}
-                  onCopyInvitationLink={(name, token) => void state.handleCopyInvitationLink(name, token)}
+                  openCreateConviteDialog={state.openCreateConviteDialog}
+                  openEditConviteDialog={state.openEditConviteDialog}
+                  handleSaveConvite={state.handleSaveConvite}
+                  handleDeleteConvite={(id) => void state.handleDeleteConvite(id)}
+                  handleCreateGuest={state.handleCreateGuest}
+                  startGuestEdit={state.startGuestEdit}
+                  handleDeleteGuest={(guest) => void state.handleDeleteGuest(guest)}
+                  handleCopyInvitationLink={(name, token) => void state.handleCopyInvitationLink(name, token)}
                   getWhatsappUrl={state.getWhatsappUrl}
                   getMailtoUrl={state.getMailtoUrl}
                 />
@@ -362,18 +380,38 @@ export function PlannerDashboard({
                     <GuestsSection
                       selectedParty={state.selectedParty}
                       selectedPartyLocked={state.selectedPartyLocked}
+                      selectedConvite={state.selectedConvite}
+                      selectedConviteId={state.selectedConviteId}
+                      setSelectedConviteId={state.setSelectedConviteId}
+                      conviteDialogOpen={state.conviteDialogOpen}
+                      setConviteDialogOpen={state.setConviteDialogOpen}
+                      editingConviteId={state.editingConviteId}
+                      conviteForm={state.conviteForm}
+                      setConviteForm={state.setConviteForm}
                       filteredGuests={state.filteredGuests}
                       guestSearch={state.guestSearch}
                       setGuestSearch={state.setGuestSearch}
                       guestFilter={state.guestFilter}
                       setGuestFilter={state.setGuestFilter}
+                      guestDialogOpen={state.guestDialogOpen}
+                      setGuestDialogOpen={state.setGuestDialogOpen}
+                      editingGuestId={state.editingGuestId}
                       guestForm={state.guestForm}
                       setGuestForm={state.setGuestForm}
-                      createGuest={state.createGuest}
-                      deleteGuest={state.deleteGuest}
-                      onCreateGuest={state.handleCreateGuest}
-                      onDeleteGuest={(guest) => void state.handleDeleteGuest(guest)}
-                      onCopyInvitationLink={(name, token) => void state.handleCopyInvitationLink(name, token)}
+                      createConvite={state.createConvite}
+                      updateConvite={state.updateConvite}
+                      deleteConvite={state.deleteConvite}
+                      addGuestToConvite={state.addGuestToConvite}
+                      updateGuestInConvite={state.updateGuestInConvite}
+                      deleteGuestFromConvite={state.deleteGuestFromConvite}
+                      openCreateConviteDialog={state.openCreateConviteDialog}
+                      openEditConviteDialog={state.openEditConviteDialog}
+                      handleSaveConvite={state.handleSaveConvite}
+                      handleDeleteConvite={(id) => void state.handleDeleteConvite(id)}
+                      handleCreateGuest={state.handleCreateGuest}
+                      startGuestEdit={state.startGuestEdit}
+                      handleDeleteGuest={(guest) => void state.handleDeleteGuest(guest)}
+                      handleCopyInvitationLink={(name, token) => void state.handleCopyInvitationLink(name, token)}
                       getWhatsappUrl={state.getWhatsappUrl}
                       getMailtoUrl={state.getMailtoUrl}
                     />

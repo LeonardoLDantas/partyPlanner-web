@@ -1,4 +1,4 @@
-import type { GuestGroup, GuestStatus, GuestType } from '@/domain/entities/party';
+import type { GuestGroup, GuestStatus, GuestType, InviteType } from '@/domain/entities/party';
 
 export const sections = [
   { id: 'Painel', label: 'Início', icon: 'Home' },
@@ -16,6 +16,13 @@ export const guestStatuses: GuestStatus[] = ['Confirmado', 'Pendente', 'Recusou'
 export const guestTypes: { value: GuestType; label: string }[] = [
   { value: 'Adulto', label: 'Adulto' },
   { value: 'Crianca', label: 'Criança' }
+];
+
+export const inviteTypes: { value: InviteType; label: string }[] = [
+  { value: 'Familia',  label: 'Família' },
+  { value: 'Amigos',   label: 'Amigos' },
+  { value: 'Trabalho', label: 'Trabalho' },
+  { value: 'Outro',    label: 'Outro' }
 ];
 
 export const guestGroups: { value: GuestGroup; label: string }[] = [

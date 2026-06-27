@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import type { GuestGroup, GuestStatus, GuestType, Party } from '@/domain/entities/party';
+import type { GuestGroup, GuestStatus, GuestType, InviteType, Party } from '@/domain/entities/party';
 import type { ToastMessage } from '@/presentation/components/ui/toast';
 import { maximumExpectedGuests, maximumPartyLocationLength, partyCategories } from '@/domain/constants/party.constants';
 import { isUpcomingParty, normalizeTaskStatus } from '@/domain/utils/party.utils';
@@ -111,6 +111,13 @@ export function useDashboardState() {
   const [editingPartyId, setEditingPartyId] = useState('');
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [guestDialogOpen, setGuestDialogOpen] = useState(false);
+  const [selectedConviteId, setSelectedConviteId] = useState('');
+  const [conviteDialogOpen, setConviteDialogOpen] = useState(false);
+  const [editingConviteId, setEditingConviteId] = useState('');
+  const [conviteForm, setConviteForm] = useState<{ nome: string; observacao: string; tipo: InviteType; quantidadeSenhas: string; senhaPresente: string }>({
+    nome: '', observacao: '', tipo: 'Outros' as InviteType, quantidadeSenhas: '1', senhaPresente: ''
+  });
+  const [editingGuestId, setEditingGuestId] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mobileNotificationsOpen, setMobileNotificationsOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -139,19 +146,12 @@ export function useDashboardState() {
 
   const {
     dashboardQuery,
-    createParty,
-    updateParty,
-    deleteParty,
-    createTask,
-    updateTask,
-    deleteTask,
-    createGuest,
-    deleteGuest,
-    createBudgetItem,
-    updateBudgetItem,
-    deleteBudgetItem,
-    markAllAsRead,
-    clearAllNotifications
+    createParty, updateParty, deleteParty,
+    createTask, updateTask, deleteTask,
+    createConvite, updateConvite, deleteConvite,
+    addGuestToConvite, updateGuestInConvite, deleteGuestFromConvite,
+    createBudgetItem, updateBudgetItem, deleteBudgetItem,
+    markAllAsRead, clearAllNotifications
   } = useDashboardData(true);
 
   const parties = dashboardQuery.data?.parties ?? [];
@@ -183,7 +183,7 @@ export function useDashboardState() {
 
   const totalBudget = parties.reduce((sum, party) => sum + (party.budget?.spent ?? 0), 0);
   const confirmedGuests = parties.reduce(
-    (sum, party) => sum + party.guests.filter((guest) => guest.status === 'Confirmado').length,
+    (sum, party) => sum + party.convites.flatMap((convite) => convite.guests).filter((guest) => guest.status === 'Confirmado').length,
     0
   );
   const completedTasks = parties.reduce(
@@ -192,15 +192,14 @@ export function useDashboardState() {
   );
   const totalTasks = parties.reduce((sum, party) => sum + party.tasks.length, 0);
 
-  const selectedGuests = selectedParty?.guests ?? [];
-  const filteredGuests = selectedGuests.filter((guest) => {
+  const selectedConvite = selectedParty?.convites.find((c) => c.id === selectedConviteId) ?? selectedParty?.convites[0] ?? null;
+  const filteredGuests = (selectedConvite?.guests ?? []).filter((guest) => {
     const search = guestSearch.trim().toLowerCase();
     const matchesStatus = guestFilter === 'Todos' || guest.status === guestFilter;
     const matchesSearch =
       search.length === 0 ||
       guest.name.toLowerCase().includes(search) ||
       guest.group.toLowerCase().includes(search);
-
     return matchesStatus && matchesSearch;
   });
 
@@ -530,42 +529,88 @@ export function useDashboardState() {
     }
   }
 
-  async function handleCreateGuest(event: React.FormEvent<HTMLFormElement>) {
+  function openCreateConviteDialog() {
+    setEditingConviteId('');
+    setConviteForm({ nome: '', observacao: '', tipo: 'Familia', quantidadeSenhas: '1', senhaPresente: '' });
+    setConviteDialogOpen(true);
+  }
+
+  function openEditConviteDialog(conviteId: string) {
+    if (!selectedParty) return;
+    const convite = selectedParty.convites.find((c) => c.id === conviteId);
+    if (!convite) return;
+    setEditingConviteId(conviteId);
+    setConviteForm({ nome: convite.nome, observacao: convite.observacao, tipo: convite.tipo, quantidadeSenhas: '1', senhaPresente: convite.senhaPresente });
+    setConviteDialogOpen(true);
+  }
+
+  async function handleSaveConvite(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    if (!selectedParty) {
-      return;
-    }
-
-    if (selectedPartyLocked) {
-      setActionError('Este evento já foi finalizado. Não é possível adicionar convidados.');
-      return;
-    }
-
+    if (!selectedParty) return;
+    if (selectedPartyLocked) { setActionError('Evento finalizado.'); return; }
     try {
       setActionError('');
-      await createGuest.mutateAsync({ partyId: selectedParty.id, ...guestForm });
-      setGuestForm({ name: '', group: 'Outros', type: 'Adulto', email: '', phoneNumber: '+55 ' });
-      setGuestDialogOpen(false);
-      pushToast('Convidado adicionado', 'A lista de presença foi atualizada.');
+      if (editingConviteId) {
+        await updateConvite.mutateAsync({ partyId: selectedParty.id, conviteId: editingConviteId, nome: conviteForm.nome, observacao: conviteForm.observacao || undefined, tipo: conviteForm.tipo, senhaPresente: conviteForm.senhaPresente || undefined });
+        pushToast('Convite atualizado', `"${conviteForm.nome}" foi salvo.`);
+      } else {
+        const result = await createConvite.mutateAsync({ partyId: selectedParty.id, nome: conviteForm.nome, observacao: conviteForm.observacao || undefined, tipo: conviteForm.tipo, quantidadeSenhas: Number(conviteForm.quantidadeSenhas) || 1, senhaPresente: conviteForm.senhaPresente || undefined });
+        const created = result.convites.find((c) => c.nome === conviteForm.nome.trim());
+        if (created) setSelectedConviteId(created.id);
+        pushToast('Convite criado', `"${conviteForm.nome}" com ${conviteForm.quantidadeSenhas} senha(s).`);
+      }
+      setConviteDialogOpen(false);
+      setEditingConviteId('');
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Não foi possível adicionar o convidado.');
+      setActionError(error instanceof Error ? error.message : 'Não foi possível salvar o convite.');
     }
   }
 
-  async function handleDeleteGuest(guest: Party['guests'][number]) {
-    if (!selectedParty) {
-      return;
-    }
-
-    if (selectedPartyLocked) {
-      setActionError('Este evento já foi finalizado. Não é possível excluir convidados.');
-      return;
-    }
-
+  async function handleDeleteConvite(conviteId: string) {
+    if (!selectedParty) return;
     try {
       setActionError('');
-      await deleteGuest.mutateAsync({ partyId: selectedParty.id, guestId: guest.id });
+      await deleteConvite.mutateAsync({ partyId: selectedParty.id, conviteId });
+      if (selectedConviteId === conviteId) setSelectedConviteId('');
+      pushToast('Convite excluído', 'O convite e seus convidados foram removidos.');
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível excluir o convite.');
+    }
+  }
+
+  async function handleCreateGuest(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedParty || !selectedConvite) return;
+    if (selectedPartyLocked) { setActionError('Evento finalizado.'); return; }
+    try {
+      setActionError('');
+      if (editingGuestId) {
+        await updateGuestInConvite.mutateAsync({ partyId: selectedParty.id, conviteId: selectedConvite.id, guestId: editingGuestId, ...guestForm });
+        setEditingGuestId('');
+        pushToast('Convidado atualizado', `"${guestForm.name}" foi salvo.`);
+      } else {
+        await addGuestToConvite.mutateAsync({ partyId: selectedParty.id, conviteId: selectedConvite.id, ...guestForm });
+        pushToast('Convidado adicionado', 'A lista de presença foi atualizada.');
+      }
+      setGuestForm({ name: '', group: 'Outros', type: 'Adulto', email: '', phoneNumber: '+55 ' });
+      setGuestDialogOpen(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Não foi possível salvar o convidado.');
+    }
+  }
+
+  function startGuestEdit(guest: Party['convites'][number]['guests'][number]) {
+    setEditingGuestId(guest.id);
+    setGuestForm({ name: guest.name, group: guest.group, type: guest.type, email: guest.email, phoneNumber: guest.phoneNumber });
+    setGuestDialogOpen(true);
+  }
+
+  async function handleDeleteGuest(guest: Party['convites'][number]['guests'][number]) {
+    if (!selectedParty || !selectedConvite) return;
+    if (selectedPartyLocked) { setActionError('Evento finalizado.'); return; }
+    try {
+      setActionError('');
+      await deleteGuestFromConvite.mutateAsync({ partyId: selectedParty.id, conviteId: selectedConvite.id, guestId: guest.id });
       pushToast('Convidado removido', `"${guest.name}" saiu da lista.`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Não foi possível excluir o convidado.');
@@ -772,6 +817,16 @@ export function useDashboardState() {
     setTaskDialogOpen,
     guestDialogOpen,
     setGuestDialogOpen,
+    selectedConviteId,
+    setSelectedConviteId,
+    conviteDialogOpen,
+    setConviteDialogOpen,
+    editingConviteId,
+    conviteForm,
+    setConviteForm,
+    editingGuestId,
+    setEditingGuestId,
+    selectedConvite,
     notificationsOpen,
     setNotificationsOpen,
     mobileNotificationsOpen,
@@ -820,8 +875,8 @@ export function useDashboardState() {
     createTask,
     updateTask,
     deleteTask,
-    createGuest,
-    deleteGuest,
+    createConvite, updateConvite, deleteConvite,
+    addGuestToConvite, updateGuestInConvite, deleteGuestFromConvite,
     createBudgetItem,
     updateBudgetItem,
     deleteBudgetItem,
@@ -846,7 +901,12 @@ export function useDashboardState() {
     handleTaskDragStart,
     handleTaskDragOver,
     handleTaskDrop,
+    openCreateConviteDialog,
+    openEditConviteDialog,
+    handleSaveConvite,
+    handleDeleteConvite,
     handleCreateGuest,
+    startGuestEdit,
     handleDeleteGuest,
     handleCopyInvitationLink,
     getWhatsappUrl,
